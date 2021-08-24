@@ -19,7 +19,7 @@ file_dict={}
 maxlen=0
 maxext=''
 maxextlist=[]
-directory_path = os.getcwd()
+directory_path = os.getcwd()+'/../../../../../../'
 print("My current directory is : " + directory_path)
 folder_name = os.path.basename(directory_path)
 
