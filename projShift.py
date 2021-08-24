@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import string
 alphabet=list(string.ascii_lowercase)
