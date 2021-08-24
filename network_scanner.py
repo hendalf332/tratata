@@ -1,5 +1,4 @@
 ﻿#!/usr/bin/env python
-#pip3 install scapy-python3
 import scapy.all as scapy
 import argparse
 import os
