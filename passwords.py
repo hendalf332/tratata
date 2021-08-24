@@ -191,5 +191,5 @@ def main():
         else:
             print('Enter correct code 1,2 or 3 !!!')
         input()
-        clr
+        clr()
 main()
