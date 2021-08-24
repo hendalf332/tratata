@@ -5,6 +5,12 @@ import csv
 from os.path import exists as file_exists
 import sys, readchar
 
+def clr():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+
 def passprompt(prompt: str, out = sys.stdout) -> str:
     out.write(prompt); out.flush()
     password = ""
@@ -135,7 +141,7 @@ Enter Selection:
     return ans
     
 def main():
-    os.system("clear")
+    clr()
     encstr=''
     importFile()
     while True:
@@ -185,5 +191,5 @@ def main():
         else:
             print('Enter correct code 1,2 or 3 !!!')
         input()
-        os.system("clear")
+        clr
 main()
