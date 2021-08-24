@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 import os
 import string
+def clr():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+        
 alphabet=list(string.ascii_lowercase)
 alphabet.append(' ')
 alphabet_upper=list(string.ascii_uppercase)
@@ -8,6 +14,7 @@ punct=list(string.punctuation)
 for x in range(0,9):
     punct.append(str(x))
 def menu():
+    clr()
     msg="""1) Make a code
 2) Decode a message
 3) Quit
@@ -69,8 +76,7 @@ def decode(str,num):
     return res
 
 def main():
-    print(string.ascii_lowercase)
-    os.system("clear")
+    clr()
     encstr=''
     while True:
         ans=menu()
