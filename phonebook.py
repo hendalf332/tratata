@@ -1,0 +1,16 @@
+import sqlite3
+
+with sqlite3.connect("phonebook.db") as db:cursor=db.cursor()
+cursor.execute("""CREATE TABLE IF NOT EXISTS phonebook(id integer PRIMARY KEY,firstname text NOT NULL,surname text NOT NULL,phonenumber TEXT NOT NULL);""")
+cursor.execute("""INSERT INTO phonebook(id, firstname, surname, phonenumber)
+VALUES("1", "Simon", "Howeis", "01223 349752")""")
+cursor.execute("""INSERT INTO phonebook(id, firstname, surname, phonenumber)
+VALUES("2", "Karen", "Philips", "01954 295773")""")
+cursor.execute("""INSERT INTO phonebook(id, firstname, surname, phonenumber)
+VALUES("3", "Darren", "Smith", "01583 749012")""")
+cursor.execute("""INSERT INTO phonebook(id, firstname, surname, phonenumber)
+VALUES("4", "Anne", "Jones", "01323 567322")""")
+cursor.execute("""INSERT INTO phonebook(id, firstname, surname, phonenumber)
+VALUES("5", "Mark", "Smith", "01223 855534")""")
+db.commit()
+db.close()
