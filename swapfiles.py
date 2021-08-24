@@ -2,11 +2,14 @@
 import os
 import random
 def copy_file(filename1,filename2):
-    file1=open(filename1,'rb')
-    file2=open(filename2,'wb')
-    file2.write(file1.read())
-    file1.close()
-    file2.close()
+    try:
+        file1=open(filename1,'rb')
+        file2=open(filename2,'wb')
+        file2.write(file1.read())
+        file1.close()
+        file2.close()
+    except:
+        pass
 def swap_files(file1,file2):
     tempfl='tmpfl'
     copy_file(file1,tempfl)
