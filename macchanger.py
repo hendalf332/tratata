@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python
 from subprocess import run,check_output,STDOUT
 import optparse
 import os
