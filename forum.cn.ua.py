@@ -26,10 +26,13 @@ def get_details(html):
     msn=soup.find('b',text=re.compile("MSN:")).find_parent('td').find_next_sibling('td',class_='bottomborder').text.strip()
     yahoo=soup.find('b',text=re.compile("Yahoo:")).find_parent('td').find_next_sibling('td',class_='bottomborder').text.strip()
     aim=soup.find('b',text=re.compile("AIM:")).find_parent('td').find_next_sibling('td',class_='bottomborder').text.strip()
+    regdate=soup.find('b',text=re.compile("Зарегистрировался:")).find_parent('td').find_next_sibling('td',class_='bottomborder').text.strip()
+    active=soup.find('b',text=re.compile("Максимально активен в:")).find_parent('td').find_next_sibling('td').find('a').text.strip()
+    print("Активен в "+active)
     print('Nick '+nick)
-    print(f'Group {group} {icq=} {msn=} {yahoo=} {aim=}')
+    print(f'Group {group} {icq=} {msn=} {yahoo=} {aim=} {regdate=} {active=}')
     user={
-    'nick':nick,'group':group,'icq':icq,'msn':msn,'yahoo':yahoo,'aim':aim
+    'nick':nick,'group':group,'icq':icq,'msn':msn,'yahoo':yahoo,'aim':aim,'active':active,'regdate':regdate
     }
     users.append(user)
     print('-'*80)
@@ -37,9 +40,9 @@ def get_details(html):
 def save_file(items,path):
     with open(path,'w',newline='') as file:
         writer=csv.writer(file,delimiter=';')
-        writer.writerow(['Nick','Группа','ICQ','MSN','Yahoo','AIM'])
+        writer.writerow(['Nick','Группа','ICQ','MSN','Yahoo','AIM','regdate','active'])
         for item in items:
-            writer.writerow([item['nick'],item['group'],item['icq'],item['msn'],item['yahoo'],item['aim']])
+            writer.writerow([item['nick'],item['group'],item['icq'],item['msn'],item['yahoo'],item['aim'],item['regdate'],item['active']])
 
 def main():
     useragents=open('user-agents.txt','r').read().split('\n')
