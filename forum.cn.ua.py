@@ -2,8 +2,10 @@ import requests
 from random import choice
 from bs4 import BeautifulSoup
 import re
+import csv
 from time import sleep
 from random import uniform
+
 users=[]
 URL='https://forum.cn.ua/index.php?act=Profile&CODE=03&MID='
 HEADERS={'user-agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36','accept':'*/*'}
