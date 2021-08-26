@@ -6,9 +6,11 @@ import os
 import re
 from random import choice
 from time import sleep
+import time
 import sys, readchar
 from random import uniform
 import os
+import datetime
 users=[]
 
 session = requests.Session()
@@ -52,6 +54,9 @@ def get_request_html(url,params=None):
     r= session.get(url, headers=HEADERS,params=params)
     return r
 def login_auth(sid):
+    current_time = time.localtime()
+    cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)
+    FILE="forum.chornobyl.com.ua_"+str(cur_date)+".csv"
     login=input('Введіть ім\'я користувача:')
     passwd=passprompt('Введіть пароль:')
     session = requests.Session()
@@ -83,6 +88,7 @@ def login_auth(sid):
         print(userLink)
         html=session.get(userLink,headers=useragent)
         get_user_info(html.text,userLink)
+    
     save_file(users,FILE)
     os.startfile(FILE)
     with open("hh_success.html","w",encoding="utf-8") as f:
