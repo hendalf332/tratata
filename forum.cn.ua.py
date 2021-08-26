@@ -7,7 +7,8 @@ import csv
 from time import sleep
 from random import uniform
 import os
-
+# def replace_string(string):
+    # return ''.join(re.sub(r'(<p>|</p>)',"",string))
 users=[]
 URL='https://forum.cn.ua/index.php?act=Profile&CODE=03&MID='
 HEADERS={'user-agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36','accept':'*/*'}
@@ -18,7 +19,7 @@ def get_html(url,useragent=None,proxy=None):
     r=requests.get(url,headers=useragent,proxies=proxy)
     return r
 
-def get_details(html):
+def get_details(html,myurl):
 
     print('New Forum Member:',end=' ')
     soup=BeautifulSoup(html,'html.parser')
@@ -34,7 +35,7 @@ def get_details(html):
     print('Nick '+nick)
     print(f'Group {group} {icq=} {msn=} {yahoo=} {aim=} {regdate=} {active=}')
     user={
-    'nick':nick,'group':group,'icq':icq,'msn':msn,'yahoo':yahoo,'aim':aim,'active':active,'regdate':regdate
+    'nick':nick,'group':group,'icq':icq,'msn':msn,'yahoo':yahoo,'aim':aim,'active':active,'regdate':regdate,'url':myurl
     }
     users.append(user)
     print('-'*80)
@@ -42,14 +43,16 @@ def get_details(html):
 def save_file(items,path):
     with open(path,'w',newline='') as file:
         writer=csv.writer(file,delimiter=';')
-        writer.writerow(['Nick','Группа','ICQ','MSN','Yahoo','AIM','regdate','active'])
+        writer.writerow(['Nick','Группа','ICQ','MSN','Yahoo','AIM','regdate','active','Посилання'])
         for item in items:
-            writer.writerow([item['nick'],item['group'],item['icq'],item['msn'],item['yahoo'],item['aim'],item['regdate'],item['active']])
+            writer.writerow([item['nick'],item['group'],item['icq'],item['msn'],item['yahoo'],item['aim'],item['regdate'],item['active'],item['url']])
 
 def main():
     useragents=open('user-agents.txt','r').read().split('\n')
     proxies=open('proxylist.txt','r').read().split('\n')
-    for num in range(1,1000):
+    startRg=int(input("Введіть початкове значення:"))
+    endRg=int(input("Введіть кінцеве значення:"))
+    for num in range(startRg,endRg):
         a = uniform(3,6)
         print(a)
         sleep(a)
@@ -63,7 +66,7 @@ def main():
             continue
         if html.status_code==200:
             print('FORUM USER URL: '+myurl)
-            user=get_details(html.text)
+            user=get_details(html.text,myurl)
             
     save_file(users,FILE)
     os.startfile(FILE)
