@@ -41,9 +41,9 @@ def passprompt(prompt: str, out = sys.stdout) -> str:
 def save_file(items,path):
     with open(path,'w',newline='') as file:
         writer=csv.writer(file,delimiter=';')
-        writer.writerow(['Nick','ДатаРегистрации','ДатаОст.Визита','Кіл.Повідомлень','Контакти','Звідки','Групи','Діяльність','НайбільшАктивний','Інтереси','Посилання'])
+        writer.writerow(['Nick','ДатаРегистрации','ДатаОст.Визита','Кіл.Повідомлень','Контакти','Звідки','Групи','Діяльність','НайбільшАктивний','Інтереси','Посилання','Сайт'])
         for item in items:
-            writer.writerow([item['nick'],item['regdate'],item['visitdate'],item['msgnum'],item['contacts'],item['otkuda'],item['groups'],item['activity'],item['active'],item['interests'],item['url']])
+            writer.writerow([item['nick'],item['regdate'],item['visitdate'],item['msgnum'],item['contacts'],item['otkuda'],item['groups'],item['activity'],item['active'],item['interests'],item['url'],item['site']])
 
 def get_html(url,params=None):
     r= requests.get(url, headers=HEADERS,params=params)
@@ -105,20 +105,28 @@ def get_user_info(html,myurl):
         data['msgnum']=msgnum
         data['url']=myurl
         print(f"Ник {nick}\n Зарегистрирован {regdate}\n Остнній візит {visitdate}\n {msgnum}\n")
-        active=soup.find('td',text=re.compile("Наиболее активен в форуме:")).find_next('td').text.strip()
-        groups=active=soup.find('td',text=re.compile("Группы:")).find_next('td').text.strip()
-        otkuda=active=soup.find('td',text=re.compile("Откуда:")).find_next('td').text.strip()
-        activity=active=soup.find('td',text=re.compile("Род занятий:")).find_next('td').text.strip()
-        interests=active=soup.find('td',text=re.compile("Интересы:")).find_next('td').text.strip()
-        email=active=soup.find('td',text=re.compile("Адрес e-mail:")).find_next('td').text.strip()
-        msnm=active=soup.find('td',text=re.compile("MSNM/WLM:")).find_next('td').text.strip()
-        YIM=active=soup.find('td',text=re.compile("YIM:")).find_next('td').text.strip()
-        aim=active=soup.find('td',text=re.compile("AIM:")).find_next('td').text.strip()
-        icq=active=soup.find('td',text=re.compile("ICQ:")).find_next('td').text.strip()
-        jabber=active=soup.find('td',text=re.compile("Jabber:")).find_next('td').text.strip()
+        try:
+            active=soup.find('td',text=re.compile("Наиболее активен в форуме:")).find_next('td').find('b').find('a').text.strip()
+        except:
+            active=''
+        try:
+            site=soup.find('td',text=re.compile("Сайт:")).find_next('td').find('b').find('a').text.strip()
+        except:
+            site=''
+        groups=soup.find('td',text=re.compile("Группы:")).find_next('td').text.strip()
+        otkuda=soup.find('td',text=re.compile("Откуда:")).find_next('td').text.strip()
+        activity=soup.find('td',text=re.compile("Род занятий:")).find_next('td').text.strip()
+        interests=soup.find('td',text=re.compile("Интересы:")).find_next('td').text.strip()
+        email=soup.find('td',text=re.compile("Адрес e-mail:")).find_next('td').text.strip()
+        msnm=soup.find('td',text=re.compile("MSNM/WLM:")).find_next('td').text.strip()
+        YIM=soup.find('td',text=re.compile("YIM:")).find_next('td').text.strip()
+        aim=soup.find('td',text=re.compile("AIM:")).find_next('td').text.strip()
+        icq=soup.find('td',text=re.compile("ICQ:")).find_next('td').text.strip()
+        jabber=soup.find('td',text=re.compile("Jabber:")).find_next('td').text.strip()
         data['contacts']=f"{email} {msnm} {YIM} {aim} {icq} {jabber}"
         data['otkuda']=otkuda
         data['groups']=groups
+        data['site']=site
         data['active']=active
         data['activity']=activity
         data['interests']=interests
