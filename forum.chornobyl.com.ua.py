@@ -21,6 +21,38 @@ HEADERS={'user-agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTM
 HOST='http://forum.chornobyl.com.ua'
 FILE='forum.chornobyl.com.ua.csv'
 
+def clr():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+
+
+def print_logo():
+    clr()
+    logo="""
+
+                     .    ____/ (  (    )   )  \___
+               .         /( (  (  )   _    ))  )   )\        .   .
+                       ((     (   )(    )  )   (   )  )   .
+            .    .   ((/  ( _(   )   (   _) ) (  () )  )        .   .
+                    ( (  ( (_)   ((    (   )  .((_ ) .  )_
+     .       .     (_((__(_(__(( ( ( |  ) ) ) )_))__))_)___)   .
+         .         ((__)        \\||lll|l||///          \_))       .
+                  .       . / (  |(||(|)|||//  \     .    .      .      .
+    .       .           .   (   /(/ (  )  ) )\          .     .
+        .      .    .     (  . ( ( ( | | ) ) )\   )               .
+                           (   /(| / ( )) ) ) )) )    .   .  .       .  .  
+    .     .       .  .   (  .  ( ((((_(|)_)))))     )            .
+            .  .          (    . ||\(|(|)|/|| . . )        .        .
+        .           .   (   .    |(||(||)||||   .    ) .      .         .  
+    .      .      .       (     //|/l|||)|\\ \     )      .      .   .
+                        (/ / //  /|//||||\\  \ \  \ _)
+-------------------------------------------------------------------------
+
+"""
+    print(logo)
+
 def passprompt(prompt: str, out = sys.stdout) -> str:
     out.write(prompt); out.flush()
     password = ""
@@ -35,7 +67,7 @@ def passprompt(prompt: str, out = sys.stdout) -> str:
                 out.flush()
         else: 
             password += ch
-            out.write('X')
+            out.write("*")
             out.flush()
     print('\n')
     return password
@@ -57,6 +89,7 @@ def login_auth(sid):
     current_time = time.localtime()
     cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)
     FILE="forum.chornobyl.com.ua_"+str(cur_date)+".csv"
+    print(FILE)
     login=input('Введіть ім\'я користувача:')
     passwd=passprompt('Введіть пароль:')
     session = requests.Session()
@@ -76,16 +109,21 @@ def login_auth(sid):
     #Вход успешно воспроизведен и мы сохраняем страницу в html файл
     useragents=open('user-agents.txt','r').read().split('\n')
     proxies=open('proxylist.txt','r').read().split('\n')
+    if not "Вы успешно вошли в систему" in post_request.text:
+        print('[-] Логін чи пароль невірні!!!')
+        sys.exit(-1)
+    else:
+        print('[+] Ви успішно війшли в систему!!!')
+        print_logo()
     startRg=int(input("Введіть початкове значення:"))
     endRg=int(input("Введіть кінцеве значення:"))
     for ui in range(startRg,endRg):
         a = uniform(3,6)
-        print(a)
+        # print(a)
         sleep(a)
         proxy= {'http':'http://'+choice(proxies)}
         useragent= {'User-Agent': choice(useragents)}
         userLink=user_url+str(ui)
-        print(userLink)
         html=session.get(userLink,headers=useragent)
         get_user_info(html.text,userLink)
     
@@ -110,7 +148,7 @@ def get_user_info(html,myurl):
         data['visitdate']=visitdate
         data['msgnum']=msgnum
         data['url']=myurl
-        print(f"Ник {nick}\n Зарегистрирован {regdate}\n Остнній візит {visitdate}\n {msgnum}\n")
+        print(f"Ник {nick}\n Зарегистрирован {regdate}\n Остнній візит {visitdate}\n Кількість повідомлень: {msgnum}\n")
         try:
             active=soup.find('td',text=re.compile("Наиболее активен в форуме:")).find_next('td').find('b').find('a').text.strip()
         except:
@@ -137,9 +175,13 @@ def get_user_info(html,myurl):
         data['activity']=activity
         data['interests']=interests
         print('Наиболее активен в форуме: ' + active)
-        print(groups)
-        print('Otkuda: '+otkuda)
+        print('Группи: '+groups)
+        print('Звідки: '+otkuda)
+        print('Діяльнісь: '+activity)
+        print('Сайт: '+site)
         print(f" {email} {msnm} {aim} {YIM} {icq} {jabber}")
+        print(f"Посилання на профіль: {myurl}")
+        print("-"*100)
         users.append(data)
     except Exception as ex:
         data['otkuda']=''
@@ -148,6 +190,10 @@ def get_user_info(html,myurl):
         data['active']=''
         data['activity']=''
         data['interests']=''
+    except KeyboardInterrupt:
+        save_file(users,FILE)
+        os.startfile(FILE)
+        
 
 
 
@@ -156,7 +202,14 @@ def get_content(html):
     sid= soup.find('input',{'name':'sid'}).get('value').strip()
     login= soup.find('input',{'name':'login','class':'btnmain'}).get('value').strip()
     print(f"sid {sid} login {login}")
-    login_auth(sid)
+    try:
+        login_auth(sid)
+    except KeyboardInterrupt:
+        current_time = time.localtime()
+        cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)
+        FILE="forum.chornobyl.com.ua_"+str(cur_date)+".csv"
+        save_file(users,FILE)
+        os.startfile(FILE)
     for ui in range(6556,6866):
         userLink=user_url+str(ui)
         print(f"userLink {userLink}")
