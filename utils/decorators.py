@@ -1,6 +1,8 @@
 from colorama import Fore, Style
+import os
 import colorama
-colorama.init(convert=True)
+if os.name=='nt':
+    colorama.init(convert=True)
 
 class IconicDecorator(object):
     def __init__(self):
