@@ -209,6 +209,7 @@ def get_userinfo(html,myurl):
                 for link in postLinks:
                     postLink=link.get('href')
                     postLinkText=link.text.strip()
+                    postLink=re.sub(r"^/","https://vk.com/",postLink)
                     if len(postLinkText)>300:
                         postLinkText=postLinkText[:301]
                     pl.append({'postLink':postLink,'Текст':postLinkText})
