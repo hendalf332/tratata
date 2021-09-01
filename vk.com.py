@@ -23,6 +23,7 @@ start_time=time.time()
 try:
     import requests
     from colorama import Fore, Style
+    import colorama
     if os.name=='nt':
         colorama.init(convert=True)
 except ImportError:
