@@ -12,7 +12,7 @@ import sys
 
 from utils.decorators import MessageDecorator
 from utils.provider import APIProvider
-mesgdcrt=MessageDecorator("stat")
+mesgdcrt=MessageDecorator("icon")
 users=[]
 FILE='vk.com.csv'
 FILEJS='vk.com.json'
@@ -21,12 +21,20 @@ start_time=time.time()
 try:
     import requests
     from colorama import Fore, Style
+    import colorama
+    colorama.init(convert=True)
 except ImportError:
     print("\tSome dependencies could not be imported (possibly not installed)")
     print(
         "Type `pip3 install -r requirements.txt` to "
         " install all required packages")
     sys.exit(1)
+    
+def get_version():
+    try:
+        return open(".version", "r").read().strip()
+    except Exception:
+        return '1.0'
 
 def clr():
     if os.name == "nt":
@@ -65,7 +73,62 @@ def check_intr():
         print_logo()
         mesgdcrt.FailureMessage("Poor internet connection detected")
         sys.exit(2)
- 
+
+def do_git_update():
+    success = False
+    try:
+        print(ALL_COLORS[0]+"UPDATING "+RESET_ALL, end='')
+        process = subprocess.Popen("git checkout . && git pull ",
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        while process:
+            print(ALL_COLORS[0]+'.'+RESET_ALL, end='')
+            time.sleep(1)
+            returncode = process.poll()
+            if returncode is not None:
+                break
+        success = not process.returncode
+    except Exception:
+        success = False
+    print("\n")
+
+    if success:
+        mesgdcrt.SuccessMessage("vk.com parser was updated to the latest version")
+        mesgdcrt.GeneralMessage(
+            "Please run the script again to load the latest version")
+    else:
+        mesgdcrt.FailureMessage("Unable to update vk.com.py.")
+        mesgdcrt.WarningMessage("Make Sure To Install 'git' ")
+        mesgdcrt.GeneralMessage("Then run command:")
+        print(
+            "git checkout . && "
+            "git pull https://github.com/hendalf332/tratata/tratata.git HEAD")
+    sys.exit()
+
+def update():
+    if shutil.which('git'):
+        do_git_update()
+    else:
+        do_zip_update()
+
+def check_for_updates():
+    if DEBUG_MODE:
+        mesgdcrt.WarningMessage(
+            "DEBUG MODE Enabled! Auto-Update check is disabled.")
+        return
+    mesgdcrt.SectionMessage("Checking for updates")
+    fver = requests.get(
+        "https://raw.githubusercontent.com/hendalf332/tratata/master/.version"
+    ).text.strip()
+    if fver != __VERSION__:
+        mesgdcrt.WarningMessage("An update is available")
+        mesgdcrt.GeneralMessage("Starting update...")
+        update()
+    else:
+        mesgdcrt.SuccessMessage("Vk.com.py parser is up-to-date")
+        mesgdcrt.GeneralMessage("Starting Vk.com.py parser")
+
 def save_file(items,path):
     with open(path,'w',newline='') as file:
         writer=csv.writer(file,delimiter=';')
@@ -91,8 +154,10 @@ def get_userinfo(html,myurl):
     try:
         pname=soup.find('h1',class_='page_name').text.strip()
         user['url']=myurl
+        print(f"[+] {myurl}")
     except:
         pname=''
+        return
     user['pname']=pname  
     
     try:
@@ -176,10 +241,16 @@ def get_userinfo(html,myurl):
         print(f"{pname=} {visitDate=}")
         users.append(user)
     print('-'*80)
+__VERSION__ = get_version()
+ASCII_MODE = False
+DEBUG_MODE = False
 
 def main():
     url='https://vk.com/tratata'
+    clr()
+    print_logo()
     check_intr()
+    check_for_updates()
     current_time = time.localtime()
     cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)
     global FILE
@@ -212,7 +283,7 @@ def main():
         if url=="":
             os.exit(0)
         url='https://vk.com/'+url
-        print(url)
+
         a = uniform(3,6)
         # print(a)
         sleep(a)
@@ -241,6 +312,7 @@ def main():
         json.dump(users,file,indent=4,ensure_ascii=False)
     finish_time=time.time()-start_time
     print(f"Затраченое время на работу скрипта: {finish_time}")
+                
                 
 if __name__=='__main__':
     main()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import requests
 from bs4 import BeautifulSoup
 import csv
 import os
@@ -11,6 +10,22 @@ import sys, readchar
 from random import uniform
 import os
 import datetime
+
+from utils.decorators import MessageDecorator
+from utils.provider import APIProvider
+mesgdcrt=MessageDecorator("icon")
+try:
+    import requests
+    from colorama import Fore, Style
+    import colorama
+    colorama.init(convert=True)
+except ImportError:
+    print("\tSome dependencies could not be imported (possibly not installed)")
+    print(
+        "Type `pip3 install -r requirements.txt` to "
+        " install all required packages")
+    sys.exit(1)
+    
 users=[]
 
 session = requests.Session()
@@ -21,6 +36,12 @@ HEADERS={'user-agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTM
 HOST='http://forum.chornobyl.com.ua'
 FILE='forum.chornobyl.com.ua.csv'
 
+def get_version():
+    try:
+        return open(".version", "r").read().strip()
+    except Exception:
+        return '1.0'
+        
 def clr():
     if os.name == "nt":
         os.system("cls")
@@ -52,6 +73,70 @@ def print_logo():
 
 """
     print(logo)
+def check_intr():
+    try:
+        requests.get("https://github.com")
+    except Exception:
+        print_logo()
+        mesgdcrt.FailureMessage("Poor internet connection detected")
+        sys.exit(2)
+
+def do_git_update():
+    success = False
+    try:
+        print(ALL_COLORS[0]+"UPDATING "+RESET_ALL, end='')
+        process = subprocess.Popen("git checkout . && git pull ",
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        while process:
+            print(ALL_COLORS[0]+'.'+RESET_ALL, end='')
+            time.sleep(1)
+            returncode = process.poll()
+            if returncode is not None:
+                break
+        success = not process.returncode
+    except Exception:
+        success = False
+    print("\n")
+
+    if success:
+        mesgdcrt.SuccessMessage("forum.chornobyl.com.ua parser was updated to the latest version")
+        mesgdcrt.GeneralMessage(
+            "Please run the script again to load the latest version")
+    else:
+        mesgdcrt.FailureMessage("Unable to update forum.chornobyl.com.ua.py.")
+        mesgdcrt.WarningMessage("Make Sure To Install 'git' ")
+        mesgdcrt.GeneralMessage("Then run command:")
+        print(
+            "git checkout . && "
+            "git pull https://github.com/hendalf332/tratata/tratata.git HEAD")
+    
+    sys.exit()
+
+def update():
+    if shutil.which('git'):
+        do_git_update()
+    else:
+        do_zip_update()
+
+def check_for_updates():
+    if DEBUG_MODE:
+        mesgdcrt.WarningMessage(
+            "DEBUG MODE Enabled! Auto-Update check is disabled.")
+        return
+    mesgdcrt.SectionMessage("Checking for updates")
+    fver = requests.get(
+        "https://raw.githubusercontent.com/hendalf332/tratata/master/.version"
+    ).text.strip()
+    if fver != __VERSION__:
+        mesgdcrt.WarningMessage("An update is available")
+        mesgdcrt.GeneralMessage("Starting update...")
+        update()
+    else:
+        mesgdcrt.SuccessMessage("forum.chornobyl.com.ua.py parser is up-to-date")
+        mesgdcrt.GeneralMessage("Starting forum.chornobyl.com.ua.py parser")
+    time.sleep(3)
 
 def passprompt(prompt: str, out = sys.stdout) -> str:
     out.write(prompt); out.flush()
@@ -90,6 +175,7 @@ def login_auth(sid):
     cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)
     FILE="forum.chornobyl.com.ua_"+str(cur_date)+".csv"
     print(FILE)
+    clr()
     login=input('Введіть ім\'я користувача:')
     passwd=passprompt('Введіть пароль:')
     session = requests.Session()
@@ -110,10 +196,10 @@ def login_auth(sid):
     useragents=open('user-agents.txt','r').read().split('\n')
     proxies=open('proxylist.txt','r').read().split('\n')
     if not "Вы успешно вошли в систему" in post_request.text:
-        print('[-] Логін чи пароль невірні!!!')
+        print('['+Fore.RED + Style.BRIGHT+'-' + Fore.GREEN +'] Логін чи пароль невірні!!!')
         sys.exit(-1)
     else:
-        print('[+] Ви успішно війшли в систему!!!')
+        print(Fore.YELLOW + Style.BRIGHT+'[+]' + Fore.GREEN  + ' Ви успішно війшли в систему!!!')
         print_logo()
     startRg=int(input("Введіть початкове значення:"))
     endRg=int(input("Введіть кінцеве значення:"))
@@ -124,8 +210,11 @@ def login_auth(sid):
         proxy= {'http':'http://'+choice(proxies)}
         useragent= {'User-Agent': choice(useragents)}
         userLink=user_url+str(ui)
-        html=session.get(userLink,headers=useragent)
-        get_user_info(html.text,userLink)
+        try:
+            html=session.get(userLink,headers=useragent)
+            get_user_info(html.text,userLink)
+        except:
+            pass
     
     save_file(users,FILE)
     os.startfile(FILE)
@@ -220,7 +309,15 @@ def get_content(html):
             #print(html.text)
         
 
+__VERSION__ = get_version()
+ASCII_MODE = False
+DEBUG_MODE = False
+
 def main():
+    clr()
+    print_logo()
+    check_intr()
+    check_for_updates()
     html=get_html(URL)
     if html.status_code==200:
         get_content(html.text)
