@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import csv
 import os
 import re
+import shutil
 from random import choice
 from time import sleep
 import time
