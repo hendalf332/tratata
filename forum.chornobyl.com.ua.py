@@ -20,7 +20,8 @@ try:
     import requests
     from colorama import Fore, Style
     import colorama
-    colorama.init(convert=True)
+    if os.name=='nt':
+    	colorama.init(convert=True)
 except ImportError:
     print("\tSome dependencies could not be imported (possibly not installed)")
     print(
