@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from bs4 import BeautifulSoup
 from random import choice
 from time import sleep
 from random import uniform
@@ -21,6 +20,7 @@ FILEJS='vk.com.json'
 start_time=time.time()
 
 try:
+    from bs4 import BeautifulSoup
     import requests
     from colorama import Fore, Style
     import colorama
