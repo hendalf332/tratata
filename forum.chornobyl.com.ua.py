@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from bs4 import BeautifulSoup
 import csv
 import os
 import re
@@ -18,6 +17,7 @@ from utils.provider import APIProvider
 mesgdcrt=MessageDecorator("icon")
 try:
     import requests
+    from bs4 import BeautifulSoup
     from colorama import Fore, Style
     import colorama
     if os.name=='nt':
