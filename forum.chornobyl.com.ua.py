@@ -310,6 +310,9 @@ def get_content(html):
         
 
 __VERSION__ = get_version()
+ALL_COLORS = [Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.BLUE,
+              Fore.MAGENTA, Fore.CYAN, Fore.WHITE]
+RESET_ALL = Style.RESET_ALL
 ASCII_MODE = False
 DEBUG_MODE = False
 
