@@ -198,6 +198,40 @@ def get_userinfo(html,myurl):
     user['groupList']=groupList
         
     try:
+        posts=soup.find_all('div',class_='_post_content')
+        postList=[]
+        for pHeader in posts:
+            try:
+                author=pHeader.find('div',class_='post_header_info').find('a',class_='author').text.strip() 
+                pDate=pHeader.find('div',class_='post_header_info').find('div',class_='post_date').find('span',class_='rel_date').text.strip()
+                postLinks=pHeader.find('div',class_='wall_text').find_all('a')
+                pl=[]
+                for link in postLinks:
+                    postLink=link.get('href')
+                    postLinkText=link.text.strip()
+                    if len(postLinkText)>300:
+                        postLinkText=postLinkText[:301]
+                    pl.append({'postLink':postLink,'Текст':postLinkText})
+                    
+                try:
+                    postText=pHeader.find('div',class_='wall_post_text').text.strip()
+                except:
+                    postText=''
+                postList.append({
+                    'Автор':author,
+                    'Дата':pDate,
+                    'Посилання':pl,
+                    'ТекстПосту':postText
+                })
+                print(author,pDate,pl,postText)
+            except:
+                continue  
+        user['posts']=postList
+    except:
+        user['posts']=''
+
+        
+    try:
         counts=soup.find('div',class_='counts_module').find_all('a',class_='page_counter')
         print('Counters: ')
         countList=[]
@@ -239,7 +273,8 @@ def get_userinfo(html,myurl):
                     groupList,
                     publics,
                     countList,
-                    profiledataList
+                    profiledataList,
+                    postList
                 ))
         print(f"{pname=} {visitDate=}")
         users.append(user)
@@ -282,7 +317,8 @@ def main():
             'Групи',
             'Паблики',
             'countList',
-            'Данні профілю'
+            'Данні профілю',
+            'Список постів'
         )
         )
     for id in range(startRg,endRg):
