@@ -309,8 +309,8 @@ def main():
     proxies=open('proxylist.txt','r').read().split('\n')
     clr()
     print('Діапазон пошуку id користувачів vkontakte\nНаприклад 325005713:')
-    startRg=int(input("Введіть початкове значення:"))
-    endRg=int(input("  Введіть кінцеве значення:"))
+    startRg=int(input(mesgdcrt.CommandMessage("Введіть початкове значення:")))
+    endRg=int(input(mesgdcrt.CommandMessage("  Введіть кінцеве значення:")))
     with open(FILE,"w",encoding="utf-8", newline='') as file:
         writer=csv.writer(file,delimiter=';')
         writer.writerow(
