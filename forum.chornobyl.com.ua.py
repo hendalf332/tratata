@@ -108,7 +108,7 @@ def do_git_update():
         mesgdcrt.GeneralMessage(
             "Please run the script again to load the latest version")
 	try:
-		os.system("chmod +x *.py")
+	    os.system("chmod +x *.py")
 	except:
 	    pass
     else:
