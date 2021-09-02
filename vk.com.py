@@ -97,6 +97,10 @@ def do_git_update():
     print("\n")
 
     if success:
+        try:
+            os.system("chmod +x *.py")
+        except:
+            pass
         mesgdcrt.SuccessMessage("vk.com parser was updated to the latest version")
         mesgdcrt.GeneralMessage(
             "Please run the script again to load the latest version")
