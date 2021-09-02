@@ -149,9 +149,9 @@ def passprompt(prompt: str, out = sys.stdout) -> str:
     out.write(prompt); out.flush()
     password = ""
     while True:
-        try:
+        if os.name=='nt':
             ch = str(readchar.readchar(), encoding='UTF-8')
-        except:
+        else:
             ch = str(readchar.readchar())
         if ch == '\r':
             break
