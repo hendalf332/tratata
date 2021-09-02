@@ -107,6 +107,10 @@ def do_git_update():
         mesgdcrt.SuccessMessage("forum.chornobyl.com.ua parser was updated to the latest version")
         mesgdcrt.GeneralMessage(
             "Please run the script again to load the latest version")
+	try:
+            os.system("chmod +x *.py")
+        except:
+            pass
     else:
         mesgdcrt.FailureMessage("Unable to update forum.chornobyl.com.ua.py.")
         mesgdcrt.WarningMessage("Make Sure To Install 'git' ")
