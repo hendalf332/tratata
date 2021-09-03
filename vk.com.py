@@ -155,6 +155,23 @@ def get_html(url,useragent=None,proxy=None):
     r=requests.get(url,headers=useragent,proxies=proxy)
     return r
     
+def get_id(html,url):
+    print("get_id")
+    soup=BeautifulSoup(html,'html.parser')
+    try:
+        id=soup.find("meta",{'property':'og:url'}).get('content')
+        if id!="":
+            try:
+                pname=soup.find('h1',class_='page_name').text.strip()
+            except:
+                pname=''
+            mesgdcrt.SuccessMessage(f"{id} Ім'я {pname}")
+            return id
+        else:
+            return -1
+    except:
+        return -1
+    
 def get_userinfo(html,myurl):
     soup=BeautifulSoup(html,'html.parser')
     user={}
@@ -307,7 +324,55 @@ def main():
     
     useragents=open('user-agents.txt','r').read().split('\n')
     proxies=open('proxylist.txt','r').read().split('\n')
+    
     clr()
+    choice2=""
+    avail_choice = {
+        "1": "Отримати ID користувача",
+        "2": "Парсити діапазон ID"
+    }
+    try:
+        while (choice2 not in avail_choice):
+            clr()
+            print_logo()
+            print("Доступні пункти:\n")
+            for key, value in avail_choice.items():
+                print("[ {key} ] {value}".format(key=key,
+                                                      value=value))
+            print()
+            choice2 = input(mesgdcrt.CommandMessage("Enter Choice : "))
+        if int(choice2)==1:
+            while True:
+                clr()
+                uname=input(mesgdcrt.CommandMessage("Введіть адресу сторінки користувача vk.com:"))
+                uname="https://vk.com/"+uname
+                mesgdcrt.GeneralMessage(f"Адреса сторінки {uname}")
+                proxy= {'http':'http://'+choice(proxies)}
+                useragent= {'User-Agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36'}
+                try:
+
+                    html=get_html(uname,useragent)#,proxy)
+                    # print(html.text)
+                    with open("vk.com.html", "w",encoding="utf-8") as file:
+                        file.write(html.text)
+                    with open("vk.com.html",encoding="utf-8") as file:
+                        src = file.read() 
+                except:
+                    print(mesgdcrt.FailureMessage("Не можу з'єднатися по адресу!!!"))
+                if html.status_code==200:
+                    try:
+                        id=get_id(src,uname)
+                        if id!=-1:
+                            mesgdcrt.GeneralMessage(f"User {uname} has id {id}")
+                    except:
+                        pass
+                ans=input("Повторити пошук(y/n)?")
+                if ans!='y':
+                    break
+                
+    except KeyboardInterrupt:
+        mesgdcrt.WarningMessage("Программу перервано клавіатурою Cntrl+C")
+        sys.exit()
     print('Діапазон пошуку id користувачів vkontakte\nНаприклад 325005713:')
     startRg=int(input(mesgdcrt.CommandMessage("Введіть початкове значення:")))
     endRg=int(input(mesgdcrt.CommandMessage("  Введіть кінцеве значення:")))
@@ -338,7 +403,7 @@ def main():
         proxy= {'http':'http://'+choice(proxies)}
         useragent= {'User-Agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36'}
         try:
-            html=get_html(url,useragent,proxy)
+            html=get_html(url,useragent)#,proxy)
             # print(html.text)
             with open("vk.com.html", "w",encoding="utf-8") as file:
                 file.write(html.text)
