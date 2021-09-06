@@ -14,7 +14,7 @@ mesgdcrt=MessageDecorator("icon")
 cnt=0
 #url=''
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
-file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
+
 for link in sys.argv:
     res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)/',link)
     if res:
@@ -29,8 +29,20 @@ for link in sys.argv:
         res = requests.get(link,headers=headers,stream=True,timeout=20)
         html = res.text
         expr='([^"]+\.mp4)'
+        ext_dict={}
         prev_res=''
-        results=[]
+        results=re.findall(r'"[^"]+\.([\w\d]{1,4})"',html)
+        for res in results:
+            if res not in ext_dict:
+                ext_dict[res]=1
+            else:
+                ext_dict[res]+=1
+            # print(res)
+        for ky,val in ext_dict.items():
+            print(ky,f" {val} ",end='')
+        
+        print("\n","#"*80)
+        file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
         for ext in file_lst:
             files=re.findall(r'"([^"]+\.'+ext +')"',html)
             if files:
