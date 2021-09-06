@@ -21,7 +21,7 @@ cnt=0
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
 
 for link in sys.argv:
-    res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)/',link)
+    res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)(?:/|$)',link)
     if res:
         url=res.group(1)
     if cnt>0:
