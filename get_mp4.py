@@ -17,10 +17,13 @@ for link in sys.argv:
         #print(res)
         html = res.text
         expr='([^"]+\.mp4)'
-        # if(html.find(".mp4") != -1):
+        prev_res=''
         for ext in file_lst:
-            res=re.search(r'"([^"]+\.'+ext +')"',html)
-            if res:
-                video_url=res.group(1)
-                print(video_url)
+            files=re.findall(r'"([^"]+\.'+ext +')"',html)
+            if files:
+                for res in files:
+                    video_url=res
+                    if res!=prev_res:
+                        print(video_url)
+                    prev_res=video_url
     cnt+=1
