@@ -4,7 +4,15 @@ import sys
 cnt=0
 for link in sys.argv:
     if cnt>0:
-        res = requests.get(link)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36",
+            "Accept-Encoding":"gzip, deflate",
+            "Accept-Language":"uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+        }
+
+        res = requests.get(link,headers=headers,stream=True,timeout=20)
+        #print(res)
         html = res.text
 
         if(html.find("license_code:") != -1):
@@ -92,9 +100,6 @@ for link in sys.argv:
 
             link = orig.replace(j, h)
 
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13"
-            }
 
             response = requests.get(link,headers=headers,stream=True,timeout=20)
             
