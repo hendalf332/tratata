@@ -6,19 +6,9 @@ import colorama
 import os
 if os.name=='nt':
     colorama.init(convert=True)
-from utils.decorators import MessageDecorator
-from utils.provider import APIProvider
-
-mesgdcrt=MessageDecorator("icon")
-def clr():
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
-        
+     
 cnt=0
-#url=''
-file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
+file_lst=[]
 
 for link in sys.argv:
     res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)(?:/|$)',link)
@@ -36,21 +26,18 @@ for link in sys.argv:
         expr='([^"]+\.mp4)'
         ext_dict={}
         prev_res=''
-        results=re.findall(r'"[^"]+\.([\w\d]{1,4})["?/]',html)
+        results=re.findall(r'"[^"?]*/[^"?]+\.([\w\d]{1,4})["?/]',html)
         for res in results:
             if res not in ext_dict:
                 ext_dict[res]=1
             else:
                 ext_dict[res]+=1
-            # print(res)
-        # clr()
         for ky,val in ext_dict.items():
             print(ky,f" {val} ",end='')
-        
         print("\n","#"*80)
         file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
         for ext in file_lst:
-            files=re.findall(r'"([^"?]+\.'+ext +')[?"/]',html)
+            files=re.findall(r'"([^"?]*/[^"?]+\.'+ext +')[?"/]',html)
             if files:
                 for res in files:
                     video_url=res
