@@ -49,7 +49,11 @@ for link in sys.argv:
                 for res in files:
                     video_url=res
                     video_url=re.sub(r"^/",url+"/",video_url)
+                    if not re.match(r"^https?://",video_url):
+                        video_url=re.sub(r"^",url+"/",video_url)
                     if video_url not in results:
-                        results.append(video_url)
-                        print(video_url)
+
+                        if video_url not in results:
+                            results.append(video_url)
+                            print(video_url)
     cnt+=1
