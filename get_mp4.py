@@ -26,7 +26,7 @@ for link in sys.argv:
         expr='([^"]+\.mp4)'
         ext_dict={}
         prev_res=''
-        results=re.findall(r'"[^"?]*/[^"?]+\.([\w\d]{1,4})["?/]',html)
+        results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
         for res in results:
             if res not in ext_dict:
                 ext_dict[res]=1
@@ -37,7 +37,7 @@ for link in sys.argv:
         print("\n","#"*80)
         file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
         for ext in file_lst:
-            files=re.findall(r'"([^"?]*/[^"?]+\.'+ext +')[?"/]',html)
+            files=re.findall(r'"([^"?\s]*/[^"?\s]+\.'+ext +')[?"/]',html)
             if files:
                 for res in files:
                     video_url=res
