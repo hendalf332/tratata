@@ -2,6 +2,7 @@
 import requests
 import sys
 import re
+import os
 import colorama
 if os.name=='nt':
     colorama.init(convert=True)
