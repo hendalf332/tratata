@@ -2,14 +2,15 @@
 import requests
 import sys
 import re
-
+from utils.decorators import MessageDecorator
+mesgdcrt=MessageDecorator("icon")
 cnt=0
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
+file_lst=list(map(str, input(mesgdcrt.CommandMessage("Введіть список типів файлів для пошуку:").lower().split())))
 for link in sys.argv:
     res=re.search(r'(https?://(\w+\.){1,2}\w+)/',link)
     if res:
         url=res.group(1)
-        print(url)
     if cnt>0:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36",
