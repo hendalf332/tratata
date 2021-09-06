@@ -4,8 +4,12 @@ import sys
 import re
 
 cnt=0
-file_lst=["mp4","mp3",'ico','gif']
+file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
 for link in sys.argv:
+    res=re.search(r'(https?://(\w+\.){1,2}\w+)/',link)
+    if res:
+        url=res.group(1)
+        print(url)
     if cnt>0:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36",
@@ -14,16 +18,17 @@ for link in sys.argv:
             "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
         }
         res = requests.get(link,headers=headers,stream=True,timeout=20)
-        #print(res)
         html = res.text
         expr='([^"]+\.mp4)'
         prev_res=''
+        results=[]
         for ext in file_lst:
             files=re.findall(r'"([^"]+\.'+ext +')"',html)
             if files:
                 for res in files:
                     video_url=res
-                    if res!=prev_res:
+                    video_url=re.sub(r"^/",url+"/",video_url)
+                    if video_url not in results:
+                        results.append(video_url)
                         print(video_url)
-                    prev_res=video_url
     cnt+=1
