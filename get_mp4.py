@@ -4,6 +4,7 @@ import sys
 import re
 
 cnt=0
+file_lst=["mp4","mp3"]
 for link in sys.argv:
     if cnt>0:
         headers = {
@@ -16,8 +17,9 @@ for link in sys.argv:
         #print(res)
         html = res.text
         expr='([^"]+\.mp4)'
-        if(html.find(".mp4") != -1):
-            res=re.search(r'"([^"]+\.mp4)"',html)
+        # if(html.find(".mp4") != -1):
+        for ext in file_lst:
+            res=re.search(r'"([^"]+\.'+ext +')"',html)
             if res:
                 video_url=res.group(1)
                 print(video_url)
