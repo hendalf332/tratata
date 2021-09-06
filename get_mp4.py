@@ -12,10 +12,11 @@ from utils.provider import APIProvider
 mesgdcrt=MessageDecorator("icon")
 
 cnt=0
+#url=''
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
 file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
 for link in sys.argv:
-    res=re.search(r'(https?://(\w+\.){1,2}\w+)/',link)
+    res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)/',link)
     if res:
         url=res.group(1)
     if cnt>0:
