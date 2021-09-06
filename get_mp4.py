@@ -2,8 +2,13 @@
 import requests
 import sys
 import re
+import colorama
+if os.name=='nt':
+    colorama.init(convert=True)
 from utils.decorators import MessageDecorator
+
 mesgdcrt=MessageDecorator("icon")
+
 cnt=0
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
 file_lst=list(map(str, input(mesgdcrt.CommandMessage("Введіть список типів файлів для пошуку:").lower().split())))
