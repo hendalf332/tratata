@@ -4,7 +4,7 @@ import sys
 import re
 
 cnt=0
-file_lst=["mp4","mp3"]
+file_lst=["mp4","mp3",'ico','gif']
 for link in sys.argv:
     if cnt>0:
         headers = {
