@@ -10,7 +10,12 @@ from utils.decorators import MessageDecorator
 from utils.provider import APIProvider
 
 mesgdcrt=MessageDecorator("icon")
-
+def clr():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+        
 cnt=0
 #url=''
 file_lst=["mp4","mp3",'ico','gif','jpg','jpeg']
@@ -38,6 +43,7 @@ for link in sys.argv:
             else:
                 ext_dict[res]+=1
             # print(res)
+        # clr()
         for ky,val in ext_dict.items():
             print(ky,f" {val} ",end='')
         
@@ -56,4 +62,5 @@ for link in sys.argv:
                         if video_url not in results:
                             results.append(video_url)
                             print(video_url)
+                print("#"*80)
     cnt+=1
