@@ -59,7 +59,8 @@ for link in sys.argv:
         print(tel_list)
         print('Список емейлів:')
         print(mail_list)
-        results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
+        #results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
+        results=re.findall(r'"[^"?\s]+\.([\w\d]{1,7})["?/]',html)
         for res in results:
             if res not in not_ext:
                 if res not in ext_dict:
@@ -75,7 +76,7 @@ for link in sys.argv:
         print("\n","#"*80)
         file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
         for ext in file_lst:
-            files=re.findall(r'"([^"?\s]*/[^"?\s]+\.'+ext +')[?"/]',html)
+            files=re.findall(r'"([^"?\s]+\.'+ext +')[?"/]',html)
             if files:
                 for res in files:
                     video_url=res
