@@ -9,9 +9,10 @@ if os.name=='nt':
      
 cnt=0
 file_lst=[]
-
+href_list=[]
+not_ext=[]#'com','net','org','ru','us','ua','edu','it','de','bg','nl','pl','fr','at','es','hu']
 for link in sys.argv:
-    res=re.search(r'(https?://([\w\-\_]+\.){1,2}\w+)(?:/|$)',link)
+    res=re.search(r'(https?://([\w\-\_]+\.){1,4}\w+)(?:/|$)',link)
     if res:
         url=res.group(1)
     if cnt>0:
@@ -23,17 +24,54 @@ for link in sys.argv:
         }
         res = requests.get(link,headers=headers,stream=True,timeout=20)
         html = res.text
-        expr='([^"]+\.mp4)'
+        # print(html)
         ext_dict={}
-        prev_res=''
+        mail_list=[]
+        tel_list=[]
+        href_list=[]
+        results=re.findall(r'href="([^\"]+)"',html)
+        for res in results:
+            if res not in href_list:
+                res=re.sub(r"^/",url+"/",res)
+                href_list.append(res) 
+        results=re.findall(r'(https?:[^"\'\s]+)["\s\']',html)
+        for res in results:
+            if res not in href_list:
+                res=re.sub(r"^/",url+"/",res)
+                href_list.append(res)         
+                
+        results=re.findall(r"\+?(\d{,2}(?:\(\d{3,4}\))[\s\-](?:\d{2,3}[\s\-]?)(?:\d{2,3}[\s\-]){1,3}\d{2,3})[\s<\"\']",html)
+        for res in results:
+            if res not in tel_list:
+                tel_list.append(res)
+                
+        results=re.findall(r"\+\d{10,15}",html)
+        for res in results:
+            if res not in tel_list:
+                tel_list.append(res)
+                #print(res)
+        results=re.findall(r"([a-zA-Z0-9+_.-]+@(?:[a-zA-Z0-9][a-zA-Z0-9-]+\.)+[a-zA-Z0-9-]+)",html)
+        for res in results:
+            if res not in mail_list:
+                mail_list.append(res)
+                #print(res)
+        print('Список телефонів:')
+        print(tel_list)
+        print('Список емейлів:')
+        print(mail_list)
         results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
         for res in results:
-            if res not in ext_dict:
-                ext_dict[res]=1
-            else:
-                ext_dict[res]+=1
+            if res not in not_ext:
+                if res not in ext_dict:
+                    ext_dict[res]=1
+                else:
+                    ext_dict[res]+=1
+        ci=0
         for ky,val in ext_dict.items():
-            print(ky,f" {val} ",end='')
+            print("<"+ky,f" {val}>",end='')
+            ci+=1
+            if ci%5==0:
+                print()
         print("\n","#"*80)
         file_lst=list(map(str, input("Введіть список типів файлів для пошуку:").lower().split()))
         for ext in file_lst:
@@ -51,3 +89,6 @@ for link in sys.argv:
                             print(video_url)
                 print("#"*80)
     cnt+=1
+input()
+for el in href_list:
+    print(el)
