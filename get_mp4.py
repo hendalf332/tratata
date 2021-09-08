@@ -10,7 +10,9 @@ if os.name=='nt':
 cnt=0
 file_lst=[]
 href_list=[]
-not_ext=[]#'com','net','org','ru','us','ua','edu','it','de','bg','nl','pl','fr','at','es','hu']
+not_ext=[]
+socnet_list=('facebook.com','vk.com','vm.tiktok.com','instagram.com','odnoklassniki.ru','ok.ru','youtube.com','tiktok.com','t.me')
+weblinks=('com','net','org','ru','us','ua','edu','it','de','bg','nl','fr','at','es','hu')
 for link in sys.argv:
     res=re.search(r'(https?://([\w\-\_]+\.){1,4}\w+)(?:/|$)',link)
     if res:
@@ -25,6 +27,7 @@ for link in sys.argv:
         res = requests.get(link,headers=headers,stream=True,timeout=20)
         html = res.text
         # print(html)
+        soclist=[]
         ext_dict={}
         mail_list=[]
         tel_list=[]
@@ -34,6 +37,12 @@ for link in sys.argv:
             if res not in href_list:
                 res=re.sub(r"^/",url+"/",res)
                 href_list.append(res) 
+        for soclnk in socnet_list:
+            results=re.findall(r'(https?:\\?/\\?/(?:w{3}\.)?'+ soclnk +r'\\?/[^\s<\"\']+)[\s<\"\']',html)
+            for res in results:
+                if res not in soclist:
+                    soclist.append(res)
+                    
         results=re.findall(r'(https?:[^"\'\s]+)["\s\']',html)
         for res in results:
             if res not in href_list:
@@ -59,6 +68,9 @@ for link in sys.argv:
         print(tel_list)
         print('Список емейлів:')
         print(mail_list)
+        print('Список соцмереж')
+        for soc in soclist:
+            print(soc)
         #results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
         results=re.findall(r'"[^"?\s]+\.([\w\d]{1,7})["?/]',html)
         for res in results:
@@ -91,5 +103,5 @@ for link in sys.argv:
                 print("#"*80)
     cnt+=1
 input()
-for el in href_list:
-    print(el)
+# for el in href_list:
+    # print(el)
