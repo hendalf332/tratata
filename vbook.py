@@ -50,7 +50,7 @@ def main():
                 maxsize=1.09
                 newsize = (int(round(maxsize * width)), int(round( height)))
                 im_output = im_output.resize(newsize)
-                passimg.show()
+                #passimg.show()
                 im_output.show()
             except FileNotFoundError:  
                 print("Файл не найден")
@@ -61,6 +61,14 @@ def main():
             pwd=pytesseract.image_to_string(im_output,config=custom_config).strip()
             
             print(f"Пароль: {pwd}")
+            with open('pass.txt','r') as passtxt:
+                oldpass=passtxt.read()
+            if pwd==oldpass:
+                print(f'Пароль той самий')
+                os.system(f"msg * Пароль той самий {pwd}")
+            else:
+                print(f'Пароль {oldpass} змінився на {pwd}')
+                os.system(f"msg * 'Пароль {oldpass} змінився на {pwd}'")
             # os.startfile(PASSFILE)
             with open('pass.txt','w') as passtxt:
                 passtxt.write(pwd)
