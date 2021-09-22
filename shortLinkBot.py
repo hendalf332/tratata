@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 ######################
 ######################
 
-adminChat=********
+adminChat=******
 # Объект бота
 bot = Bot(token=config.TOKEN, parse_mode=types.ParseMode.HTML)
 # Диспетчер для бота
@@ -42,17 +42,19 @@ async def help(message):
 @dp.message_handler(commands=['list'])
 async def hlist(message):
     #await bot.send_message(message.chat.id, hlpmsg)
+    uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
     cid=message.chat.id
-    if adminChat==cid:
-        urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
-        if len(urllist)>300:
-            urllist=urllist[:300]
-        for line in urllist:
-            lstMsg=f"Користувач {line[2]} ввів адресу {line[0]} ShortLink {line[1]}"
-            print(lstMsg)
+    urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+    if len(urllist)>300:
+        urllist=urllist[:300]
+    for line in urllist:
+        slOwner=line[2]
+        lstMsg=f"Користувач {line[2]} ввів адресу {line[0]} ShortLink {line[1]}"
+        print(lstMsg)
+        if slOwner==uname:
             await message.answer(lstMsg,parse_mode=types.ParseMode.HTML)
-    else:
-        await message.answer('Вибачте але ви не маєте прав доступу до історії переглядів!!!')
+        if slOwner!=uname and cid==adminChat:
+            await message.answer(lstMsg,parse_mode=types.ParseMode.HTML)
 
 @dp.message_handler(commands="start", state=None)
 async def welcome(message):
@@ -124,12 +126,15 @@ async def get_message(message):
                         uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
                         
                         print(tinyurl)
-                        res2=requests.get(link,headers=NEWHEADERS,stream=True,timeout=10)
                         title=''
-                        if res2.status_code==200:
-                            linkHtml=res2.text
-                            soup2=BeautifulSoup(linkHtml,'lxml')
-                            title=soup2.find('title').text.strip()
+                        try:
+                            res2=requests.get(link,headers=NEWHEADERS,stream=True,timeout=10)
+                            if res2.status_code==200:
+                                linkHtml=res2.text
+                                soup2=BeautifulSoup(linkHtml,'lxml')
+                                title=soup2.find('title').text.strip()
+                        except:
+                            title=''
                         answer=f"[+] Success {uname} {link} {tinyurl} {title}"
                         await message.answer(answer )
                         print(answer)
