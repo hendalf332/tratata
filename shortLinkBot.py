@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
 ######################
 ######################
 
-adminChat=1212063899
+adminChat=********
 # Объект бота
 bot = Bot(token=config.TOKEN, parse_mode=types.ParseMode.HTML)
 # Диспетчер для бота
