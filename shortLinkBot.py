@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
+import asyncio
 import logging
 import config
 import weirdbot_keyboard        ## ИМПОРТИРУЕМ ДАННЫЕ ИЗ ФАЙЛОВ keyboard.py
@@ -13,13 +14,22 @@ import requests
 import csv
 from bs4 import BeautifulSoup
 ######################
-######################
+from aiogram.dispatcher import FSMContext                            ## ТО, ЧЕГО ВЫ ЖДАЛИ - FSM
+from aiogram.dispatcher.filters import Command                        ## ТО, ЧЕГО ВЫ ЖДАЛИ - FSM
+from aiogram.contrib.fsm_storage.memory import MemoryStorage        ## ТО, ЧЕГО ВЫ ЖДАЛИ - FSM
+from aiogram.dispatcher.filters.state import StatesGroup, State        ## ТО, ЧЕГО ВЫ ЖДАЛИ - FSM
 
-adminChat=******
+######################
+class searchstates(StatesGroup):
+    srch = State()
+    titleSrch = State()
+    urlSrch = State()
+storage = MemoryStorage() # FOR FSM
+    
 # Объект бота
 bot = Bot(token=config.TOKEN, parse_mode=types.ParseMode.HTML)
 # Диспетчер для бота
-dp = Dispatcher(bot)
+dp = Dispatcher(bot,storage=storage)
 # Включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
 LOGFILE='shortlinks.txt'
@@ -33,12 +43,83 @@ URL повинен починатися з http або https в залежнос
 Якщо не працює з https спробуйте http
 """
 
+
+
 @dp.message_handler(commands=['help'])
 async def help(message):
     #await bot.send_message(message.chat.id, hlpmsg)
     await message.answer(hlpmsg)
+
+@dp.message_handler(content_types=['text'],state=searchstates.urlSrch)
+async def urlsrchCmd(message: types.Message, state: FSMContext):  
+    srchtxt=message.text
+    print(f"UrlCmd {srchtxt}")
+    cid=message.chat.id
+    cnt=0
+    uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
+    urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+    for line in urllist:
+        slOwner=line[2]
+        urlstr=line[0]
+        if srchtxt.lower() in urlstr.lower() and uname==slOwner:
+            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            await message.answer(lstMsg)
+            cnt+=1
+        elif cid==config.adminChat and srchtxt in urlstr:
+            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            await message.answer(lstMsg)
+            cnt+=1
+    if cnt==0:
+        await message.answer("Нажаль нічого не знайдено!!!")
+    else:
+        await message.answer(f"Знайдено {cnt} записів")
+    await searchstates.srch.set()
+
+@dp.message_handler(content_types=['text'],state=searchstates.srch)
+async def srchCmd(message: types.Message, state: FSMContext):   
+    if message.text=='Шукати по URL':
+        await message.answer('Введіть підстроку з URL:')
+        await searchstates.urlSrch.set()
+        return
+    elif message.text=='Шукати по Тайтлам':
+        await message.answer('Введіть підстроку з Title сторінки:')
+        await searchstates.titleSrch.set()
+        return
+    elif message.text=='Назад':
+        await message.answer('Введіть URL для скорочення:',reply_markup=weirdbot_keyboard.start,parse_mode='Markdown')
+        await state.finish()
+    else:
+        await message.answer('Введіть команду з кнопок клавіатури:')
+ 
+
     
     
+@dp.message_handler(content_types=['text'],state=searchstates.titleSrch)
+async def titleCmd(message: types.Message, state: FSMContext):  
+    srchtxt=message.text
+    print(f"TitleCmd {srchtxt}")
+    cid=message.chat.id
+    uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
+    urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+    cnt=0
+    for line in urllist:
+        slOwner=line[2]
+        titleStr=line[3]
+        if srchtxt.lower() in titleStr.lower() and uname==slOwner:
+            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            await message.answer(lstMsg)
+            cnt+=1
+        elif cid==config.adminChat and srchtxt in titleStr:
+            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            await message.answer(lstMsg)
+            cnt+=1
+    if cnt==0:
+        await message.answer("Нажаль нічого не знайдено!!!")
+    else:
+        await message.answer(f"Знайдено {cnt} записів")
+    await searchstates.srch.set()
+            
+
 @dp.message_handler(commands=['list'])
 async def hlist(message):
     #await bot.send_message(message.chat.id, hlpmsg)
@@ -49,11 +130,11 @@ async def hlist(message):
         urllist=urllist[:300]
     for line in urllist:
         slOwner=line[2]
-        lstMsg=f"Користувач {line[2]} ввів адресу {line[0]} ShortLink {line[1]}"
+        lstMsg=f"Користувач {line[2]} ввів адресу {line[0]} ShortLink {line[1]} тайтл {line[3]}"
         print(lstMsg)
         if slOwner==uname:
             await message.answer(lstMsg,parse_mode=types.ParseMode.HTML)
-        if slOwner!=uname and cid==adminChat:
+        if slOwner!=uname and cid==config.adminChat:
             await message.answer(lstMsg,parse_mode=types.ParseMode.HTML)
 
 @dp.message_handler(commands="start", state=None)
@@ -63,7 +144,7 @@ async def welcome(message):
     await message.answer_sticker(w_sticker)
     await message.answer(f"ПРИВЕТ, *{message.from_user.first_name},* БОТ ShortUrlLink РАБОТАЕТ",reply_markup=weirdbot_keyboard.start, parse_mode='Markdown')
 
-@dp.message_handler(content_types=['text'])
+@dp.message_handler(content_types=['text'], state=None)
 async def get_message(message):
     if message.chat.type == 'private':
         if message.text=='❓ Довідка':
@@ -72,6 +153,12 @@ async def get_message(message):
         if message.text=='🔗 Читати історію':
             await hlist(message)
             return
+        if message.text=='Пошук URL':
+            await message.answer('Виберіть тип пошуку:',reply_markup=weirdbot_keyboard.poshuk,parse_mode='Markdown')
+            await searchstates.srch.set()
+            return
+        if message.text=='Назад':
+            await message.answer('Введіть URL для скорочення:',reply_markup=weirdbot_keyboard.start,parse_mode='Markdown')
     try:
         link=message.text
         res=re.search(r'(https?://([\w\-\_]+\.){1,4}\w+)(?:/|$)',link)
