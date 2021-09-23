@@ -57,22 +57,27 @@ async def urlsrchCmd(message: types.Message, state: FSMContext):
     cid=message.chat.id
     cnt=0
     uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
-    urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+    urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+    reslist=[]
     for line in urllist:
         slOwner=line[2]
         urlstr=line[0]
         if srchtxt.lower() in urlstr.lower() and uname==slOwner:
             lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            reslist.append(list(line))
             await message.answer(lstMsg)
             cnt+=1
         elif cid==config.adminChat and srchtxt in urlstr:
             lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
             await message.answer(lstMsg)
+            reslist.append(list(line))
             cnt+=1
     if cnt==0:
         await message.answer("[-]Нажаль нічого не знайдено!!!")
     else:
+        await message.answer(reslist)
         await message.answer(f"[+]Знайдено {cnt} записів")
+    await message.answer('Виберіть тип пошуку:')
     await searchstates.srch.set()
 
 @dp.message_handler(content_types=['text'],state=searchstates.srch)
@@ -117,6 +122,7 @@ async def titleCmd(message: types.Message, state: FSMContext):
         await message.answer("[-]Нажаль нічого не знайдено!!!")
     else:
         await message.answer(f"[+]Знайдено {cnt} записів")
+    await message.answer('Виберіть тип пошуку:')
     await searchstates.srch.set()
             
 
