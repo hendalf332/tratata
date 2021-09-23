@@ -94,7 +94,7 @@ async def srchCmd(message: types.Message, state: FSMContext):
         await message.answer('Введіть URL для скорочення:',reply_markup=weirdbot_keyboard.start,parse_mode='Markdown')
         await state.finish()
     else:
-        await message.answer('Введіть команду з кнопок клавіатури:')
+        await message.answer('Введіть команду з кнопок клавіатури:',reply_markup=weirdbot_keyboard.poshuk,parse_mode='Markdown')
  
 
     
