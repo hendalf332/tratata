@@ -70,22 +70,22 @@ async def urlsrchCmd(message: types.Message, state: FSMContext):
             await message.answer(lstMsg)
             cnt+=1
     if cnt==0:
-        await message.answer("Нажаль нічого не знайдено!!!")
+        await message.answer("[-]Нажаль нічого не знайдено!!!")
     else:
-        await message.answer(f"Знайдено {cnt} записів")
+        await message.answer(f"[+]Знайдено {cnt} записів")
     await searchstates.srch.set()
 
 @dp.message_handler(content_types=['text'],state=searchstates.srch)
 async def srchCmd(message: types.Message, state: FSMContext):   
-    if message.text=='Шукати по URL':
+    if message.text=='🔎Шукати по URL':
         await message.answer('Введіть підстроку з URL:')
         await searchstates.urlSrch.set()
         return
-    elif message.text=='Шукати по Тайтлам':
+    elif message.text=='🔎Шукати по Тайтлам':
         await message.answer('Введіть підстроку з Title сторінки:')
         await searchstates.titleSrch.set()
         return
-    elif message.text=='Назад':
+    elif message.text=='🔙Назад':
         await message.answer('Введіть URL для скорочення:',reply_markup=weirdbot_keyboard.start,parse_mode='Markdown')
         await state.finish()
     else:
@@ -114,9 +114,9 @@ async def titleCmd(message: types.Message, state: FSMContext):
             await message.answer(lstMsg)
             cnt+=1
     if cnt==0:
-        await message.answer("Нажаль нічого не знайдено!!!")
+        await message.answer("[-]Нажаль нічого не знайдено!!!")
     else:
-        await message.answer(f"Знайдено {cnt} записів")
+        await message.answer(f"[+]Знайдено {cnt} записів")
     await searchstates.srch.set()
             
 
@@ -153,11 +153,11 @@ async def get_message(message):
         if message.text=='🔗 Читати історію':
             await hlist(message)
             return
-        if message.text=='Пошук URL':
+        if message.text=='🔎Пошук URL':
             await message.answer('Виберіть тип пошуку:',reply_markup=weirdbot_keyboard.poshuk,parse_mode='Markdown')
             await searchstates.srch.set()
             return
-        if message.text=='Назад':
+        if message.text=='🔙Назад':
             await message.answer('Введіть URL для скорочення:',reply_markup=weirdbot_keyboard.start,parse_mode='Markdown')
     try:
         link=message.text
