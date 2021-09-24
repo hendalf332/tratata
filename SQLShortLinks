@@ -1,0 +1,60 @@
+import sqlite3
+
+class SQLShortLinks:
+    def __init__(self,database_file):
+        """ Подключаемся к БД и сохраняем курсор соеденения"""
+        self.connection = sqlite3.connect(database_file)
+        self.cursor = self.connection.cursor()
+
+
+    def url_exists(self,uname,urlstr):
+        """ Проверяем есть ли ccылка у данного юзера в базе данных"""
+        with self.connection:
+            result=self.cursor.execute("SELECT * FROM `shortlinks` WHERE `url`=? and `username`=?",(urlstr,uname)).fetchall()
+            return bool(len(result))
+
+    def get_urllinks(self,urlstr=''):
+        """ Получаем URL по подстроке"""
+        my_data=(f'%{urlstr}%',)
+        with self.connection:
+            return self.cursor.execute("SELECT username,url,shortlink,title FROM `shortlinks` WHERE `url` LIKE ?",my_data).fetchall()
+			
+    def get_shortlinks(self,urlstr=''):
+        """ Получаем URL по подстроке"""
+        with self.connection:
+            return self.cursor.execute("SELECT shortlink,title FROM `shortlinks` WHERE `url`=?",(urlstr,)).fetchall()
+            
+    def get_titlelinks(self,titlestr=''):
+        """ Получаем все ссылки с переданым тайтлом"""
+        my_data=(f'%{titlestr}%',)
+        with self.connection:
+            return self.cursor.execute("""SELECT `username`,`url`,`shortlink`,`title` FROM `shortlinks` WHERE `title` LIKE ?""",my_data).fetchall()
+
+    def get_userlinks(self,uname):
+        """ Получаем URL по имени пользователя"""
+        with self.connection:
+            return self.cursor.execute("SELECT `username`,`url`,`shortlink`,`title` FROM `shortlinks` WHERE `username`=?",(uname,)).fetchall()
+            
+    def get_alllinks(self):
+        """ Получаем URL по имени пользователя"""
+        with self.connection:
+            return self.cursor.execute("SELECT `username`,`url`,`shortlink`,`title` FROM `shortlinks`").fetchall()
+
+
+    def get_links(self,searchStr):
+        """ Получаем все ссылки где встречаеться указанная подстрока"""
+        my_data=(f'%{searchStr}%',f'%{searchStr}%',)
+
+        with self.connection:
+            return self.cursor.execute("""SELECT `username`,`url`,`shortlink`,`title` FROM `shortlinks` WHERE `title` LIKE ? OR `url` LIKE ?""",my_data).fetchall()
+    
+            
+    def add_url(self,userName,urlAddr,shortLnk,title):
+        """Добавляем новый URL """
+        with self.connection:
+            return self.cursor.execute("INSERT INTO `shortlinks` (`username`,`url`,`shortlink`,`title`) VALUES (?,?,?,?)",(userName,urlAddr,shortLnk,title))
+
+        
+    def close(self):
+        """ Закрываем соединение с БД """
+        self.connection.close()
