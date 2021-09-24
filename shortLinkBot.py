@@ -2,16 +2,21 @@
 # -*- coding: utf8 -*-
 import asyncio
 import logging
+###########################################
 import config
 import weirdbot_keyboard        ## ИМПОРТИРУЕМ ДАННЫЕ ИЗ ФАЙЛОВ keyboard.py
+import sqlshortlinks
+###########################################
 from aiogram import Bot, Dispatcher, executor, types
 import aiogram.utils.markdown as fmt
+from aiogram.types import InputTextMessageContent,InlineQueryResultArticle
 #######################
 import socket
 import re
 import io
 import requests
 import csv
+import sqlite3
 from bs4 import BeautifulSoup
 ######################
 from aiogram.dispatcher import FSMContext                            ## ТО, ЧЕГО ВЫ ЖДАЛИ - FSM
@@ -34,6 +39,8 @@ dp = Dispatcher(bot,storage=storage)
 logging.basicConfig(level=logging.INFO)
 LOGFILE='shortlinks.txt'
 
+db=sqlshortlinks.SQLShortLinks('shortlinks.db')
+
 hlpmsg="""
 Бот скорочувач посилань онлайн 
 Задайте мені правильний URL і я видам вам коротке посилання на нього
@@ -43,7 +50,44 @@ URL повинен починатися з http або https в залежнос
 Якщо не працює з https спробуйте http
 """
 
-
+@dp.inline_handler()
+async def inline_handler(query: types.InlineQuery):
+    print(query.from_user.id)
+    uid=query.from_user.id
+    if len(query.query) == 0:
+        print("Запит відсутній")
+        return
+    else:
+        srchtxt=query.query.strip().lower()
+        uname="{0.first_name}_{0.last_name}_{0.username}".format(query.from_user)
+        print(f"Inline запит {query.query} користувача {uname}")
+        #urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+        urllist=db.get_links(srchtxt)
+        reslist=[]
+        for i,line in enumerate(urllist):
+            slOwner=line[0]
+            urlstr=line[1]
+            title=line[3]
+            if (srchtxt in urlstr.lower() or srchtxt in title.lower() ):# and ( uname==slOwner or query.from_user.id==config.adminid ):
+                reslist.append(
+                InlineQueryResultArticle(
+                    id=i+1,
+                    title=f'{urlstr} {line[3]}',
+                    input_message_content=InputTextMessageContent(
+                        message_text=f'{line[0]} {line[2]} {line[3]}'
+                    )
+                )
+                )
+        if query and not reslist:
+            reslist.append(
+                InlineQueryResultArticle(
+                    id=999,
+                    title='[-]Нічого нема!!!',
+                    input_message_content=InputTextMessageContent(message_text=f'[-]Нічого не знайшлося'),
+                )
+            )
+        await bot.answer_inline_query(query.id, results=reslist, cache_time=20) 
+                  
 
 @dp.message_handler(commands=['help'])
 async def help(message):
@@ -52,23 +96,23 @@ async def help(message):
 
 @dp.message_handler(content_types=['text'],state=searchstates.urlSrch)
 async def urlsrchCmd(message: types.Message, state: FSMContext):  
-    srchtxt=message.text
+    srchtxt=message.text.strip().lower()
     print(f"UrlCmd {srchtxt}")
     cid=message.chat.id
     cnt=0
     uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
-    urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+    urllist= db.get_urllinks(srchtxt)
     reslist=[]
     for line in urllist:
-        slOwner=line[2]
-        urlstr=line[0]
+        slOwner=line[0]
+        urlstr=line[1]
         if srchtxt.lower() in urlstr.lower() and uname==slOwner:
-            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            lstMsg=f"{line[0]} ShortLink {line[2]} Title {line[3]}"
             reslist.append(list(line))
             await message.answer(lstMsg)
             cnt+=1
         elif cid==config.adminChat and srchtxt in urlstr:
-            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            lstMsg=f"{line[0]} ShortLink {line[2]} Title {line[3]}"
             await message.answer(lstMsg)
             reslist.append(list(line))
             cnt+=1
@@ -101,21 +145,22 @@ async def srchCmd(message: types.Message, state: FSMContext):
     
 @dp.message_handler(content_types=['text'],state=searchstates.titleSrch)
 async def titleCmd(message: types.Message, state: FSMContext):  
-    srchtxt=message.text
+    srchtxt=message.text.strip().lower()
     print(f"TitleCmd {srchtxt}")
     cid=message.chat.id
     uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
-    urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+    #urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
+    urllist=db.get_titlelinks(srchtxt)
     cnt=0
     for line in urllist:
-        slOwner=line[2]
+        slOwner=line[0]
         titleStr=line[3]
         if srchtxt.lower() in titleStr.lower() and uname==slOwner:
-            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+            lstMsg=f"{line[0]} ShortLink {line[2]} Title {line[3]}"
             await message.answer(lstMsg)
             cnt+=1
-        elif cid==config.adminChat and srchtxt in titleStr:
-            lstMsg=f"{line[0]} ShortLink {line[1]} Title {line[3]}"
+        elif cid==config.adminChat and srchtxt.lower() in titleStr.lower():
+            lstMsg=f"{line[0]} ShortLink {line[2]} Title {line[3]}"
             await message.answer(lstMsg)
             cnt+=1
     if cnt==0:
@@ -131,12 +176,13 @@ async def hlist(message):
     #await bot.send_message(message.chat.id, hlpmsg)
     uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
     cid=message.chat.id
-    urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+   # urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+    urllist = db.get_alllinks()
     if len(urllist)>300:
         urllist=urllist[:300]
     for line in urllist:
-        slOwner=line[2]
-        lstMsg=f"Користувач {line[2]} ввів адресу {line[0]} ShortLink {line[1]} тайтл {line[3]}"
+        slOwner=line[0]
+        lstMsg=f"Користувач {line[0]} ввів адресу {line[1]} ShortLink {line[2]} тайтл {line[3]}"
         print(lstMsg)
         if slOwner==uname:
             await message.answer(lstMsg,parse_mode=types.ParseMode.HTML)
@@ -169,13 +215,22 @@ async def get_message(message):
         link=message.text
         res=re.search(r'(https?://([\w\-\_]+\.){1,4}\w+)(?:/|$)',link)
         if res:
+            uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
+            if db.url_exists(uname,link):
+                dbres=db.get_shortlinks(link)
+                await message.answer(f"Посилання {link} вже існує")
+                print(dbres)
+                for lnk in list(dbres):
+                    print(f"Посилання {lnk[0]} на {link} вже існує {lnk[1]}")
+                    await message.answer(f"Посилання {lnk[0]} на {link} вже існує  {lnk[1]}")
+                return
             url=link
             forbiddensymbs="йцукенгшщзхїєждлорпавіфячсмитьбюыэъё№#"
             for smb in forbiddensymbs:
                 if smb in link:
                     await message.answer("Мій бот не приймає кириличних та інших символів")
                     print("Мій бот не приймає кириличних та інших символів")
-                    returnn
+                    return
             target_host = "bitly.ws"
             params='/create.php?url='+url
             print(target_host) 
@@ -232,21 +287,20 @@ async def get_message(message):
                         await message.answer(answer )
                         print(answer)
                         
-                        urllist= list(csv.reader(open(LOGFILE),delimiter=';'))
+                        urllist= db.get_alllinks()
                         urlset = list()
                         for line in urllist:
-                            urlset.append(line[0].strip())
+                            urlset.append(line[1].strip())
                         if len(urlset)>10:
                             urlset=urlset[-10:]
-                        with open(LOGFILE,"a",encoding="utf-8", newline='') as file:
-                                writer=csv.writer(file,delimiter=';')
-                                if link not in urlset:
-                                    writer.writerow((
-                                    link,
-                                    tinyurl,
-                                    uname,
-                                    title
-                                    ))
+
+                        if not db.url_exists(uname,link):
+                            db.add_url(uname,link,tinyurl,title)
+                        else:
+                            dbres=db.get_shortlinks(link)
+                            for lnk in list(dbres):
+                                print(f"Посилання {lnk[0]} на {link} вже існує Тайтл {lnk[1]}")
+                                await message.answer(f"Посилання {lnk[0]} на {link} вже існує Тайтл {lnk[1]}")
                     except:
                         print('Не вдалося')
                         await message.answer('Не вдалося')
