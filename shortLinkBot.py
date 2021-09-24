@@ -38,7 +38,8 @@ dp = Dispatcher(bot,storage=storage)
 # Включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
 LOGFILE='shortlinks.txt'
-
+GLOBAL_SHORTLINK=''
+GLOBAL_TITLE=''
 db=sqlshortlinks.SQLShortLinks('shortlinks.db')
 
 hlpmsg="""
@@ -50,43 +51,44 @@ URL повинен починатися з http або https в залежнос
 Якщо не працює з https спробуйте http
 """
 
+
 @dp.inline_handler()
 async def inline_handler(query: types.InlineQuery):
     print(query.from_user.id)
     uid=query.from_user.id
     if len(query.query) == 0:
         print("Запит відсутній")
-        return
     else:
-        srchtxt=query.query.strip().lower()
-        uname="{0.first_name}_{0.last_name}_{0.username}".format(query.from_user)
-        print(f"Inline запит {query.query} користувача {uname}")
-        #urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
-        urllist=db.get_links(srchtxt)
-        reslist=[]
-        for i,line in enumerate(urllist):
-            slOwner=line[0]
-            urlstr=line[1]
-            title=line[3]
-            if (srchtxt in urlstr.lower() or srchtxt in title.lower() ):# and ( uname==slOwner or query.from_user.id==config.adminid ):
-                reslist.append(
-                InlineQueryResultArticle(
-                    id=i+1,
-                    title=f'{urlstr} {line[3]}',
-                    input_message_content=InputTextMessageContent(
-                        message_text=f'{line[0]} {line[2]} {line[3]}'
-                    )
-                )
-                )
-        if query and not reslist:
-            reslist.append(
-                InlineQueryResultArticle(
-                    id=999,
-                    title='[-]Нічого нема!!!',
-                    input_message_content=InputTextMessageContent(message_text=f'[-]Нічого не знайшлося'),
-                )
+        print(f"Inline запит {query.query}")
+        link=query.query
+        result_id: str = "Відовідь"
+        print(link)
+        res=re.search(r'^(https?://([\w\-\_]+\.){1,4}\w+[^ #\|]+)\s+',link)
+        if res:
+            url=res.group(1)
+            uname="{0.first_name}_{0.last_name}_{0.username}".format(query.from_user)
+            print(f"Inline запит {query.query} користувача {uname} ввів url {url}")
+            await short_linker(query,url)
+            if GLOBAL_SHORTLINK!=None:
+                resultat=f"результат {GLOBAL_SHORTLINK} {GLOBAL_TITLE}"
+                print(resultat)
+                input_content = InputTextMessageContent(resultat)
+                item = InlineQueryResultArticle(
+                id=query.from_user.id,
+                title=f'Result {link!r}',
+                input_message_content=input_content,
             )
-        await bot.answer_inline_query(query.id, results=reslist, cache_time=20) 
+                await bot.answer_inline_query(query.id, results=[item], cache_time=20)
+        else:
+            answer="Введіть валідний URL!!!"
+            print(answer)
+            input_content = InputTextMessageContent(query.query)
+            item = InlineQueryResultArticle(
+            id=result_id,
+            title=f'Result {answer!r}',
+            input_message_content=input_content,
+        )
+            await bot.answer_inline_query(query.id, results=[item], cache_time=20)
                   
 
 @dp.message_handler(commands=['help'])
@@ -150,7 +152,7 @@ async def titleCmd(message: types.Message, state: FSMContext):
     cid=message.chat.id
     uname="{0.first_name}_{0.last_name}_{0.username}".format(message.from_user)
     #urllist= list(csv.reader(open(LOGFILE,encoding="utf-8"),delimiter=';'))
-    urllist=db.get_titlelinks(srchtxt)
+    urllist=db.get_alllinks()
     cnt=0
     for line in urllist:
         slOwner=line[0]
@@ -195,6 +197,106 @@ async def welcome(message):
 			'sticker1.webp', 'rb')
     await message.answer_sticker(w_sticker)
     await message.answer(f"ПРИВЕТ, *{message.from_user.first_name},* БОТ ShortUrlLink РАБОТАЕТ",reply_markup=weirdbot_keyboard.start, parse_mode='Markdown')
+
+
+async def short_linker(query,link):
+    global GLOBAL_SHORTLINK
+    global GLOBAL_TITLE
+    try:
+        uname="{0.first_name}_{0.last_name}_{0.username}".format(query.from_user)
+        if db.url_exists(uname,link):
+            dbres=db.get_shortlinks(link)
+            await bot.send_message(query['from'].id,f"Посилання {link} вже існує")
+            print(dbres)
+            for lnk in list(dbres):
+                print(f"Посилання {lnk[0]} на {link} вже існує {lnk[1]}")
+                await bot.send_message(query['from'].id,f"Посилання {lnk[0]} на {link} вже існує  {lnk[1]}")
+                GLOBAL_SHORTLINK=lnk[0]
+                GLOBAL_TITLE=lnk[1]
+            return
+        print(f"Short linker {uname} {link}")
+        url=link
+        forbiddensymbs="йцукенгшщзхїєждлорпавіфячсмитьбюыэъё№#"
+        for smb in forbiddensymbs:
+            if smb in link:
+                await bot.send_message(query['from'].id,"Мій бот не приймає кириличних та інших символів")
+                print("Мій бот не приймає кириличних та інших символів")
+                return
+        target_host = "bitly.ws"
+        params='/create.php?url='+url
+        print(target_host) 
+        target_port = 80  # create a socket object 
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+         
+        # connect the client 
+        client.connect((target_host,target_port))  
+         
+        # send some data 
+        request = f"GET {params} HTTP/1.1\r\nHost:{target_host}\r\n\r\n"
+        print(request)
+        client.send(request.encode())  
+         
+        # receive some data 
+        response = client.recv(4096)  
+        http_response = repr(response)
+        http_response_len = len(http_response)
+         
+        #display the response
+        print("[RECV] - length: %d" % http_response_len)
+        print(http_response)
+        NEWHEADERS={
+        'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Referer':'http://bitly.ws/',
+        'user-agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36',
+        'Accept-Encoding' :'gzip, deflate',
+        'Accept-Language': 'uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+        res=re.search(r'(http://[\w\/\.]+)',http_response)
+        if res:
+            tinyurl=res.group(0)
+            print(f"TinyUrl {tinyurl}")
+            res=requests.get(tinyurl,headers=NEWHEADERS,stream=True,timeout=10)
+            if res.status_code==200:
+                html=res.text
+                print('Вдалося')
+                soup=BeautifulSoup(html,'lxml')
+                try:
+                    tinyurl=soup.find('div',id='clip-text').find('b').text.strip()
+                    uname="{0.first_name}_{0.last_name}_{0.username}".format(query.from_user)
+                    
+                    print(tinyurl)
+                    title=''
+                    try:
+                        res2=requests.get(link,headers=NEWHEADERS,stream=True,timeout=10)
+                        if res2.status_code==200:
+                            linkHtml=res2.text
+                            soup2=BeautifulSoup(linkHtml,'lxml')
+                            title=soup2.find('title').text.strip()
+                    except:
+                        title=''
+                    answer=f"[+] Success {uname} {link} {tinyurl} {title}"
+                    print(answer)
+                    GLOBAL_SHORTLINK=tinyurl
+                    GLOBAL_TITLE=title
+                    await bot.send_message(query['from'].id,answer )
+                    print(f"[+]{GLOBAL_SHORTLINK},{GLOBAL_TITLE}")
+
+                    if not db.url_exists(uname,link):
+                        db.add_url(uname,link,tinyurl,title)
+                        
+                    else:
+                        dbres=db.get_shortlinks(link)
+                        for lnk in list(dbres):
+                            print(f"Посилання {lnk[0]} на {link} вже існує Тайтл {lnk[1]}")
+                            await bot.send_message(query['from'].id,f"Посилання {lnk[0]} на {link} вже існує Тайтл {lnk[1]}")
+                except:
+                    print('Не вдалося')
+                    await bot.send_message(query['from'].id,'Не вдалося')
+    
+    except:
+        await bot.send_message(query['from'].id,"Щось пійшло не так")
+        print("Щось пійшло не так")
+        GLOBAL_SHORTLINK=None
 
 @dp.message_handler(content_types=['text'], state=None)
 async def get_message(message):
@@ -287,15 +389,10 @@ async def get_message(message):
                         await message.answer(answer )
                         print(answer)
                         
-                        urllist= db.get_alllinks()
-                        urlset = list()
-                        for line in urllist:
-                            urlset.append(line[1].strip())
-                        if len(urlset)>10:
-                            urlset=urlset[-10:]
 
                         if not db.url_exists(uname,link):
                             db.add_url(uname,link,tinyurl,title)
+                            
                         else:
                             dbres=db.get_shortlinks(link)
                             for lnk in list(dbres):
