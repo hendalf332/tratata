@@ -28,8 +28,6 @@ class GET_EMAIL:
     def generate_email(cls):
         fullname=''
         username=''
-        #global emails,firstnames,surnames,separator,cletters
-        #global prevemail
         
         firstnames=cls.firstnames
         separator=cls.separator
@@ -66,7 +64,7 @@ class GET_EMAIL:
             cls.prevemail=fullname
             return fullname
         else:
-            prevemail=fullname
+            cls.prevemail=fullname
             return None
 
 def print_with_color(s, color=Fore.WHITE, brightness=Style.NORMAL, **kwargs):
