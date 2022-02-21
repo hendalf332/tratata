@@ -8,6 +8,7 @@ import os
 from bs4 import BeautifulSoup
 from typing import Set, Union, List, MutableMapping, Optional
 import urllib3
+from urllib.parse import urlparse, urlunparse, urljoin
 # essential for Windows environment
 init()
 # all available foreground colors
@@ -39,11 +40,7 @@ class LINKOVOD:
     socnetlinks=set()
     def get_links(self,url,html)-> _Links:
         soup=BeautifulSoup(html,'html.parser')
-        res=re.search(r'^([a-z]+)\:',url)
-        proto='ftp'
-        if res:
-            proto=res.group(0)
-            print(f'proto {proto}')
+        proto=urlparse(url).scheme
         def gen():
             for link in soup.find_all('a'):
                 try:
@@ -73,11 +70,8 @@ class LINKOVOD:
             "Accept-Language":"uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7",
             "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
         }
-        res=re.search(r'^([a-z]+)\:',link)
-        proto='ftp' 
-        if res:
-            proto=res.group(0)
-            print(f'proto {proto}')        
+        
+        proto=urlparse(link).scheme       
         try:
             res = requests.get(link,headers=headers,stream=True,timeout=20)
         except:
@@ -100,6 +94,7 @@ class LINKOVOD:
                 if res not in soclist:
                     soclist.append(res)
                     if len(res)<60:
+                        res=res.replace('\/','/')
                         self.socnetlinks.add(res)
                     
         results=re.findall(r'(https?:[^"\'\s]+)["\s\']',html)
@@ -136,7 +131,6 @@ class LINKOVOD:
             print('Список соцмереж:')
             for soc in soclist:
                 print(soc)
-        #results=re.findall(r'"[^"?\s]*/[^"?\s]+\.([\w\d]{1,4})["?/]',html)
         results=re.findall(r'"[^"?\s]+\.([\w\d]{1,7})["?/]',html)
         for res in results:
             if res not in not_ext:
@@ -160,10 +154,12 @@ class LINKOVOD:
             if files:
                 for res in files:
                     video_url=res
-                    if video_url.startswith('//'):# or video_url.startswith('\/\/'):
+                    video_url=video_url.replace('\/','/')
+                    if video_url.startswith('//'):
                         video_url=proto+video_url
-                    elif video_url.startswith('/') or video_url.startswith('\/'):
-                        video_url=myurl+video_url                        
+                    else:
+                        video_url=urljoin(link,video_url)
+                        
                     if video_url not in results:
 
                         if video_url not in results:
@@ -173,22 +169,28 @@ class LINKOVOD:
         return file_lst
         
     def printFileLinks(self):
+        fl=open('res.txt','w',encoding='utf-8')
         for ky in self.file_links.keys():
             if len(self.file_links[ky])>0:
                 for item in self.file_links[ky]:
                     print(f'{ky}:{item}')
+                    fl.write(f'{ky}:{item}\n')
         print('Показати емейли')
-        input()
+        fl.write(f'\nСписок емейлів:\n')
         for mail in self.emails:
             print(mail)
+            fl.write(f'{mail}\n')
+        fl.write(f'\nСписок телефонів:\n')
         print('Показати телефони')
-        input()
         for tel in self.tels:
-            print(tel)            
+            print(tel)   
+            fl.write(f'{tel}\n')
+        fl.write(f'\nСписок посилань на соцмережі:\n')
         print('Показати посилання на соцмережі:')
-        input()
         for soc in self.socnetlinks:
-            print(soc)            
+            print(soc)
+            fl.write(f'{soc}\n')
+        fl.close()
         return        
 
 if os.name=='nt':
@@ -220,5 +222,9 @@ for link in sys.argv:
             print(f"lnk {lnk}")
             fllst=mylinks.get_info(lnk,fllst)
         mylinks.printFileLinks()
+        try:
+            os.startfile('res.txt')
+        except:
+            print('[-]Не можу відкрити файл!!!')
     cnt+=1
 input()
