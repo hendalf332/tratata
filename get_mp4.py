@@ -74,6 +74,10 @@ class LINKOVOD:
         proto=urlparse(link).scheme       
         try:
             res = requests.get(link,headers=headers,stream=True,timeout=20)
+            res_hdrs=res.headers
+            contType=res_hdrs['Content-Type']
+            if not "text/html" in contType:      
+                raise TypeError()
         except:
             print('ХОСТ недосяжний!!!')
             return file_lst
