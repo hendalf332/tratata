@@ -246,6 +246,7 @@ for link in sys.argv:
         mylinks.printFileLinks()
         try:
             os.startfile('res.txt')
+            print_with_color(f"[+]Results are in files res.txt & res.xml", color=Fore.WHITE, brightness=Style.BRIGHT)
         except:
             print('[-]Не можу відкрити файл!!!')
     cnt+=1
