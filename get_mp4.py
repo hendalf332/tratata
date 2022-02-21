@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 from typing import Set, Union, List, MutableMapping, Optional
 import urllib3
 from urllib.parse import urlparse, urlunparse, urljoin
+import lxml
+from lxml import etree
 # essential for Windows environment
 init()
 # all available foreground colors
@@ -173,28 +175,44 @@ class LINKOVOD:
         return file_lst
         
     def printFileLinks(self):
+        root = etree.Element("root")
+        files=etree.SubElement(root, "files")
+        telephones=etree.SubElement(root, "telephones")
+        emailtag=etree.SubElement(root, "emails")
+        socnets=etree.SubElement(root, "socnets")
+        chldlst={}
         fl=open('res.txt','w',encoding='utf-8')
         for ky in self.file_links.keys():
             if len(self.file_links[ky])>0:
+                if not ky in chldlst:
+                    chldlst[ky]=etree.SubElement(files, ky)
                 for item in self.file_links[ky]:
-                    print(f'{ky}:{item}')
+                    print_with_color(f"{ky}:", color=Fore.MAGENTA, brightness=Style.BRIGHT,end='')
+                    print(f'{item}')
+                    chldlst[ky].append(etree.Element("a",href=item))
                     fl.write(f'{ky}:{item}\n')
         print('Показати емейли')
         fl.write(f'\nСписок емейлів:\n')
         for mail in self.emails:
             print(mail)
             fl.write(f'{mail}\n')
+            emailtag.append(etree.Element("mail",email=mail))
         fl.write(f'\nСписок телефонів:\n')
         print('Показати телефони')
         for tel in self.tels:
-            print(tel)   
+            print(tel) 
+            telephones.append(etree.Element("tel",number=tel))
             fl.write(f'{tel}\n')
         fl.write(f'\nСписок посилань на соцмережі:\n')
         print('Показати посилання на соцмережі:')
         for soc in self.socnetlinks:
             print(soc)
+            socnets.append(etree.Element("socnet",link=soc))
             fl.write(f'{soc}\n')
         fl.close()
+        myxml=etree.tostring(root, pretty_print=True)
+        with open("res.xml",'w',encoding='utf-8') as fl:            
+            fl.write(myxml.decode('utf-8'))
         return        
 
 if os.name=='nt':
