@@ -50,8 +50,8 @@ class LINKOVOD:
                     if href and not href.startswith('#')  and not href.startswith(('javascript:', 'mailto:')):
                         if href.startswith('//'):
                             href=proto+href
-                        elif href.startswith('/'):
-                            href=url+href
+                        else:
+                            href=urljoin(url,href)
                         yield href
                 except KeyError:
                     pass
