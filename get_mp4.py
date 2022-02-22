@@ -9,8 +9,12 @@ from bs4 import BeautifulSoup
 from typing import Set, Union, List, MutableMapping, Optional
 import urllib3
 from urllib.parse import urlparse, urlunparse, urljoin
-import lxml
-from lxml import etree
+lxmlflag=True
+try:
+    import lxml
+    from lxml import etree
+except ImportError:
+    lxmlflag=False
 # essential for Windows environment
 init()
 # all available foreground colors
@@ -40,6 +44,10 @@ class LINKOVOD:
     emails=set()
     tels=set()
     socnetlinks=set()
+    _CURRENT_URL=''
+    def __init__(self,url):
+        self._CURRENT_URL=url
+        
     def get_links(self,url,html)-> _Links:
         soup=BeautifulSoup(html,'html.parser')
         proto=urlparse(url).scheme
@@ -78,7 +86,7 @@ class LINKOVOD:
             res = requests.get(link,headers=headers,stream=True,timeout=20)
             res_hdrs=res.headers
             contType=res_hdrs['Content-Type']
-            if not "text/html" in contType:      
+            if not "text/html" in contType or res.status_code!=200:      
                 raise TypeError()
         except:
             print('ХОСТ недосяжний!!!')
@@ -175,44 +183,54 @@ class LINKOVOD:
         return file_lst
         
     def printFileLinks(self):
-        root = etree.Element("root")
-        files=etree.SubElement(root, "files")
-        telephones=etree.SubElement(root, "telephones")
-        emailtag=etree.SubElement(root, "emails")
-        socnets=etree.SubElement(root, "socnets")
+        if lxmlflag==True: 
+            root = etree.Element("root")
+            files=etree.SubElement(root, "files")
+            extfiles=etree.SubElement(root, "external.files")
+            telephones=etree.SubElement(root, "telephones")
+            emailtag=etree.SubElement(root, "emails")
+            socnets=etree.SubElement(root, "socnets")
         chldlst={}
+        extlst={}
         fl=open('res.txt','w',encoding='utf-8')
         for ky in self.file_links.keys():
             if len(self.file_links[ky])>0:
                 if not ky in chldlst:
-                    chldlst[ky]=etree.SubElement(files, ky)
+                    if lxmlflag==True: chldlst[ky]=etree.SubElement(files, ky)
+                    if lxmlflag==True: extlst[ky]=etree.SubElement(extfiles, ky)
                 for item in self.file_links[ky]:
                     print_with_color(f"{ky}:", color=Fore.MAGENTA, brightness=Style.BRIGHT,end='')
+                    curhost=urlparse(self._CURRENT_URL).netloc
+                    itemhost=urlparse(item).netloc
+                    if curhost==itemhost:
+                        if lxmlflag==True: chldlst[ky].append(etree.Element("a",href=item))
+                    else:
+                        if lxmlflag==True: extlst[ky].append(etree.Element("a",href=item))
                     print(f'{item}')
-                    chldlst[ky].append(etree.Element("a",href=item))
                     fl.write(f'{ky}:{item}\n')
         print('Показати емейли')
         fl.write(f'\nСписок емейлів:\n')
         for mail in self.emails:
             print(mail)
             fl.write(f'{mail}\n')
-            emailtag.append(etree.Element("mail",email=mail))
+            if lxmlflag==True: emailtag.append(etree.Element("mail",email=mail))
         fl.write(f'\nСписок телефонів:\n')
         print('Показати телефони')
         for tel in self.tels:
             print(tel) 
-            telephones.append(etree.Element("tel",number=tel))
+            if lxmlflag==True: telephones.append(etree.Element("tel",number=tel))
             fl.write(f'{tel}\n')
         fl.write(f'\nСписок посилань на соцмережі:\n')
         print('Показати посилання на соцмережі:')
         for soc in self.socnetlinks:
             print(soc)
-            socnets.append(etree.Element("socnet",link=soc))
+            if lxmlflag==True: socnets.append(etree.Element("socnet",link=soc))
             fl.write(f'{soc}\n')
         fl.close()
-        myxml=etree.tostring(root, pretty_print=True)
-        with open("res.xml",'w',encoding='utf-8') as fl:            
-            fl.write(myxml.decode('utf-8'))
+        if lxmlflag==True:
+            myxml=etree.tostring(root, pretty_print=True)
+            with open("res.xml",'w',encoding='utf-8') as fl:            
+                fl.write(myxml.decode('utf-8'))
         return        
 
 if os.name=='nt':
@@ -237,7 +255,7 @@ for link in sys.argv:
         }
         res = requests.get(link,headers=headers,stream=True,timeout=20)
         html = res.text
-        mylinks=LINKOVOD()
+        mylinks=LINKOVOD(link)
         lnks= mylinks.get_links(link,html)
         fllst=None
         for lnk in lnks:
