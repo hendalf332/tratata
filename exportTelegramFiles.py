@@ -3,9 +3,9 @@ import os
 import glob
 import shutil
 
-def copyFile(src,dst):
+def moveFile(src,dst):
     try:
-        shutil.copy(src,dst)
+        shutil.move(src,dst)
     except shutil.Error as e:
         print('Error: %s' % e)
     except IOError as e:
@@ -14,12 +14,16 @@ def copyFile(src,dst):
 def main():
     if os.name=='nt':
         sep='\\'
-        jsfile=glob.glob(os.environ['USERPROFILE']+'\\Downloads\\Telegram Desktop\\ChatExport*\\result.json')[0]
+        jsfile=glob.glob(os.environ['USERPROFILE']+'\\Downloads\\Telegram Desktop\\ChatExport*\\result.json')
     else:
         sep='/'
         uname=os.popen('uname -a')
         if 'Android' in uname:
-            jsfile=glob.glob('/sdcard/Telegram/ChatExport*/result.json')[0]
+            jsfile=glob.glob('/sdcard/Telegram/ChatExport*/result.json')[-1]
+    for cnt,jsfl in enumerate(jsfile):
+        print(cnt+1,'>',jsfl)
+    fnum=int(input('Введіть номер файлу для експорту:'))
+    jsfile=jsfile[fnum-1]
     head=os.path.split(jsfile)[0]
     
     with open(jsfile,'r') as fl:
@@ -49,11 +53,11 @@ def main():
         if os.name=='nt':
             oldFileName=oldFileName.replace('/','\\')
         newFileName=f".{sep}{host}{sep}{folder}{sep}{origfname}"
-        #newFileName=f".{sep}{host}{sep}{folder}\{os.path.split(origfname)[1]}"
+
         if os.name=='nt':
             newFileName=newFileName.replace('/','\\')
-        print(f"copyFile({oldFileName},{newFileName})")
-        copyFile(oldFileName,newFileName)
+        print(f"moveFile({oldFileName},{newFileName})")
+        moveFile(oldFileName,newFileName)
 
 if __name__ == '__main__':
 	main()
