@@ -37,7 +37,7 @@ def autoupdate():
             fl.write(r.text)
         print('[+]Successful update')
         copyFile('update.txt',fname)
-        #os.remove('update.txt')
+        os.remove('update.txt')
     else:
         print('[-]Cant update')
         
