@@ -30,7 +30,7 @@ def copyFile(src,dst):
 def autoupdate():
     fname=sys.argv[0]
     Fname=os.path.split(fname)[1]
-    print('Почати оновлення через інтернет!!!')
+    print('Try to update from the github!!!')
     r=requests.get('https://raw.githubusercontent.com/hendalf332/tratata/master/getfls.py')
     if r.status_code==200:
         with open('update.txt','w',encoding='utf-8') as fl:
