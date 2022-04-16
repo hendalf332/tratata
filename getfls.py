@@ -33,7 +33,7 @@ def autoupdate():
     print('Почати оновлення через інтернет!!!')
     r=requests.get('https://raw.githubusercontent.com/hendalf332/tratata/master/getfls.py')
     if r.status_code==200:
-        with open('update.txt','w') as fl:
+        with open('update.txt','wb') as fl:
             fl.write(r.text)
         print('[+]Successful update')
         copyFile('update.txt',fname)
