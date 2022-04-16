@@ -35,10 +35,10 @@ def autoupdate():
     if r.status_code==200:
         with open('update.txt','w') as fl:
             fl.write(r.text)
-        print('[+]Успішно оновлено')
+        print('[+]Successful update')
         copyFile('update.txt',fname)
     else:
-        print('[-]Не можу оновитися')
+        print('[-]Cant update')
         
 def check_intr():
     try:
