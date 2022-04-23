@@ -369,7 +369,7 @@ def main():
     waitForConnection()
     chtid=wt=0
 
-    basestr="CldJRklfQk9UX1RPS0VOPSc1MTQ2OTY4Mzg2OkFBR0NPZUExR1BFNDJicDIxOTYzOE9LazBDdzYxdGg1OGtzJwpDSFRJRD0xMjEyMDYzODk5Cg=="
+    basestr=""
     dstr=base64.b64decode(basestr)
     mystr=dstr.decode('ascii')
     keys=mystr.split('\n')
