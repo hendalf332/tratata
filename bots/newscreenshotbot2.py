@@ -13,6 +13,7 @@ import sys
 import multiprocessing
 from multiprocessing import Pool,Process,Queue,Lock
 from pynput.keyboard import Key, Controller
+from pynput.keyboard import HotKey
 from pynput import keyboard
 
 if os.name=='nt':
@@ -90,7 +91,7 @@ links_list=[]
 cht=TOKEN=0
 OFFSET=0
 icnt=0
-basestr="" # token and chatid encoded in base64
+basestr=""
 dstr=base64.b64decode(basestr)
 mystr=dstr.decode('ascii')
 keys=mystr.split('\n')
@@ -429,30 +430,34 @@ def parseKeys(key,kbd):
         items=key.split("|")
         print(items)
         for item in items:
-            if item.startswith("Key"):
-                parseKeys(item,kbd)
+            if item.startswith("<"):
+                keys=HotKey.parse(item)
+                time.sleep(1)
+                for it in keys:
+                    kbd.press(it)
+                for it in keys[::-1]:
+                    kbd.release(it)                 
             elif item.startswith("'") and len(item)>3:
                 item=item[1:-1]
                 time.sleep(1)
                 print('Строка ',item)
                 kbd.type(item)
-        return
-    if "+" in key:
-        print("С + ",key)
-        keys=key.split('+')
+    elif key.startswith("<"):
+        keys=HotKey.parse(key)
         time.sleep(1)
         for it in keys:
-            kbd.press(eval(it))
+            kbd.press(it)
         for it in keys[::-1]:
-            kbd.release(eval(it)) 
-        return
-    else:
+            kbd.release(it)                 
+    
+    elif key.startswith("'"):
+        key=key[1:-1]
         time.sleep(1)
-        if key.startswith('Key'):
-            kbd.press(eval(key))
-        elif key.startswith("'"):
-            kbd.type(key)
+        print('Строка ',key)
+        kbd.type(key)
+        
         return
+
         
 def send_document(bot_token,chtid,docfile,caption='Nothing'):
     url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
@@ -557,8 +562,8 @@ def get_keyboard(TOKEN,cht,queuePress,queueRelease):
                 if key.startswith('Key'):
                     if "+" not in key:
                         keyboardctl.press(eval(key))
-                    else:
-                        parseKeys(key,keyboardctl)
+                if key.startswith('<'):
+                    parseKeys(key,keyboardctl)
                                 
                         
                     
