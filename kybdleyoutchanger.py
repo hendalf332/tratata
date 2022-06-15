@@ -35,12 +35,12 @@ def pressProc(pipe:mp.Pipe):
             prs(keyboardctl,'<ctrl>+x')
             sleep(0.2)
             clipboard=pc.paste()
-            if not clipboard[0] in list(r';\',.[]qwertyuiop[]asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM'):  
+            if not clipboard[0] in list(r'{<;\',.[]qwertyuiop[]asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM'):  
                 print('yes')
-                translation = str.maketrans(dict(zip('"йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ.',"@qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,./")))
+                translation = str.maketrans(dict(zip('ХБ?:Ґ"йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ.',"{<&^|@qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,>/")))
             else:
                 print('no')
-                translation = str.maketrans(dict(zip("@qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,./",'"йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ.')))
+                translation = str.maketrans(dict(zip("{<&^|@qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,>/",'ХБ?:Ґ"йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗхЇФІВАПРОЛДжЄЯЧСМИТЬбЮ.')))
 
             clipboard = clipboard.translate(translation) 
             buf=clipboard
