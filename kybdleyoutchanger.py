@@ -26,6 +26,7 @@ def pressProc(pipe:mp.Pipe):
     while True:
         try:
             url = pipe.recv()
+            clipbackup=pc.paste()
             print(url)
             sleep(0.2)
             if url=='all':
@@ -49,6 +50,7 @@ def pressProc(pipe:mp.Pipe):
             prs(keyboardctl,'<ctrl>+v')
             sleep(0.1)
             prs(keyboardctl,'<alt>+<shift>')
+            pc.copy(clipbackup)
         
         except:
             print('exception')
