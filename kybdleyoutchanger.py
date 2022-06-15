@@ -1,4 +1,3 @@
-from PIL import ImageGrab
 import multiprocessing as mp
 from multiprocessing import Pipe, Process
 from pynput import keyboard
@@ -9,7 +8,6 @@ from multiprocessing import Pipe, Process
 import multiprocessing as mp
 import pyperclip as pc
 import requests
-import socket
 import sys
 import io
 from time import sleep
@@ -30,12 +28,13 @@ def pressProc(pipe:mp.Pipe):
             url = pipe.recv()
             print(url)
             sleep(0.2)
-            prs(keyboardctl,'<shift>+<home>')   
-            sleep(0.2)
+            if url=='all':
+                prs(keyboardctl,'<shift>+<home>')   
+                sleep(0.2)
             prs(keyboardctl,'<ctrl>+x')
             sleep(0.2)
             clipboard=pc.paste()
-            if not clipboard[0] in list(r',.[]qwertyuiop[]asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM'):  
+            if not clipboard[0] in list(r';\',.[]qwertyuiop[]asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM'):  
                 print('yes')
                 translation = str.maketrans(dict(zip('"йцукенгшщзхїфівапролджєячсмитьбю.ЙЦУКЕНГШЩЗХЇФІВАПРОЛДЖЄЯЧСМИТЬБЮ.',"@qwertyuiop[]asdfghjkl;'zxcvbnm,./QWERTYUIOP[]ASDFGHJKL;'ZXCVBNM,./")))
             else:
@@ -58,12 +57,19 @@ def pressProc(pipe:mp.Pipe):
 def on_activate():
     global buf
     global pipe
-    print('hotkey activated')
-    pipe[0].send('activate')
+    print('hotkey activated1')
+    pipe[0].send('all')
+    
+def on_activate2():
+    global buf
+    global pipe
+    print('hotkey activated2')
+    pipe[0].send('selected')    
 
 
 def main():
     mp.freeze_support()
+    print('<alt+1> -- Change layout in all string\n<alt>+` - Change selected text layout')
     global buf
     global pipe
     pipe = Pipe(duplex=True)
@@ -72,14 +78,20 @@ def main():
     hotkey = keyboard.HotKey(
     keyboard.HotKey.parse('<alt>+1'),
     on_activate)
+    hotkey2=keyboard.HotKey(
+    keyboard.HotKey.parse('<alt>+`'),
+    on_activate2)
     def for_canonical(f):
         print('for_canonical')
         return lambda k: f(l.canonical(k))
     with keyboard.Listener(
         on_press=for_canonical(hotkey.press),
         on_release=for_canonical(hotkey.release)) as l:
-        while True:
-            sleep(0.5)
+        with keyboard.Listener(
+            on_press=for_canonical(hotkey2.press),
+            on_release=for_canonical(hotkey2.release)) as l2:        
+            while True:
+                sleep(0.5)
         # l.join()    
     	
 if __name__ == '__main__':
