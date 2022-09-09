@@ -108,11 +108,11 @@ async def main():
                     if not os.path.exists(mydirname) or not os.path.isdir(mydirname):
                         print('[-]Папки не існувало зараз створимо')
                         os.mkdir(mydirname)
-                    html=get_html(myurl,useragent=HEADERS,proxy=None)
-                    sts=html.status_code
+                    html=await session.request(method="GET", url=myurl)
+                    sts=html.status
                     start = time.time()            
                     
-                    await async_get_details(html.text,myurl,mydirname)
+                    await async_get_details(await html.text(),myurl,mydirname)
                     print('{} s'.format(time.time() - start))
                     return
                 except ValueError:
