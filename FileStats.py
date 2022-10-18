@@ -79,8 +79,11 @@ def main():
             
         filedict = sorted(filedict.items(), key=lambda x:x[1],reverse=True)
         filedict = dict(filedict)
-        stats=filedict.values()
-        extensions=filedict.keys()
+        newdirdict={}
+        for ky,vl in filedict.items():
+            newdirdict[ky+' '+str(vl)]=vl
+        stats=newdirdict.values()
+        extensions=newdirdict.keys()
         plt.pie(stats,labels=extensions,radius=1.5)
         plt.legend()
         for item in filedict:
@@ -89,8 +92,16 @@ def main():
 
         dirdict = sorted(dirdict.items(), key=lambda x:x[1],reverse=True)
         dirdict = dict(dirdict)
-        stats=dirdict.values()
-        extensions=dirdict.keys()
+        newdirdict={}
+        for ky,vl in dirdict.items():
+            if vl > 1000000000:
+                newdirdict[ky+' '+str(int(vl/1024**3))+'Gb']=vl        
+            elif vl > 1000000:
+                newdirdict[ky+' '+str(int(vl/(1024**2)))+'Mb']=vl
+            elif vl>1000:
+                newdirdict[ky+' '+str(int(vl/1024))+'Kb']=vl
+        stats=newdirdict.values()
+        extensions=newdirdict.keys()
         plt.pie(stats,labels=extensions,radius=1.5)   
         plt.legend()
         plt.show()
