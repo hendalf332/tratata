@@ -14,6 +14,8 @@ def moveFile(src,dst):
 def concatFiles():
     print(concatDict)
     for file,partItem in concatDict.items():
+        partItem=sorted(partItem)
+        print(partItem)
         with open(file,'wb') as fw:
             for itemFl in partItem:
                 try:
@@ -38,8 +40,8 @@ def main():
             jsfile=glob.glob('/sdcard/Telegram/ChatExport*/result.json')[-1]
     for cnt,jsfl in enumerate(jsfile):
         print(cnt+1,'>',jsfl)
-    typef=input("FILES чи VIDEOFILES:")
     fnum=int(input('Введіть номер файлу для експорту:'))
+    typef=input("FILES чи VIDEOFILES:")
     jsfile=jsfile[fnum-1]
     head=os.path.split(jsfile)[0]
     
@@ -58,7 +60,7 @@ def main():
             origfname=info[-1]
         folder=info[0].split(':')[1]
         host=info[1].split(':')[1]
-        origfname=info[2].split(':')[1]
+        origfname=info[2].split(':')[1][1:-1]
         
         if not os.path.exists(host):
             os.mkdir(host)
@@ -76,12 +78,15 @@ def main():
         origFName=f".{sep}{host}{sep}{folder}{sep}{origfname}"
         print(f"{origFName=}{newFileName=}")
         if origfname!=fileName:
+            # fileName=fileName.replace(' ','_')
+            fileName=msg['file'].split('/')[1]
+            # newFileName=newFileName.replace(' ','_')
             if not origFName in concatDict:
                 concatDict[origFName]=[f".{sep}{host}{sep}{folder}{sep}{fileName}"]
             else:
                 concatDict[origFName].append(f".{sep}{host}{sep}{folder}{sep}{fileName}")
             print(f"{head}{sep}{typef}{sep}{fileName} +",f"{cwd}{newFileName}")
-            moveFile(f"{head}{sep}{typef}{sep}{fileName}",f"{cwd}{newFileName}")
+            moveFile(f"{head}{sep}{typef}{sep}{fileName}",f".{sep}{host}{sep}{folder}{sep}{fileName}")
         else:
             if os.name=='nt':
                 newFileName=newFileName.replace('/','\\')

