@@ -89,7 +89,7 @@ def superProc(options,queue):
 	myprint("superproc started")
 	nf_codes=[]
 	if options.certpath:
-		reqparam['veify']=options.certpath
+		reqparam['verify']=options.certpath
 	if options.basicauth:
 		username,password=options.basicauth.split(':')
 		reqparam['auth']=HTTPBasicAuth(user, password)
