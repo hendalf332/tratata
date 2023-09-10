@@ -2,6 +2,7 @@ import argparse
 import readchar
 import os
 import requests
+from requests.auth import HTTPBasicAuth
 import psutil
 from itertools import product,combinations
 from multiprocessing import Pool,Process,Queue,Lock,Manager
@@ -21,7 +22,8 @@ if there is no * <MAXIMUMLENGTHOFURL> can be missed
 [a-z]{chr(0x7b)}1,3{chr(0x7d)} - quantifiers which correspond to 3 characters from range of characters 
 (mega,test,porno,tube) - any word from list choose from alternatives like in regular expressions
 						alternatives also supports quantifiers like characters ranges
-$ - will be replaced by each word from the dictionary link or path to the dictionary -d option					
+$ - will be replaced by each word from the dictionary link or path to the dictionary -d option	
+You can add list of dictionaries separated by comma 				
 HOTKEYS:
 's' - 	suspend scaning
 'r' - 	resume scaning
@@ -56,6 +58,9 @@ def get_arguments():
     parser.add_argument('-n', required=False, default=None,dest='procnum',help='number of processes')
     parser.add_argument('-M', required=False, default=None,dest='extfound',help='Try variations on a found filename.')
     parser.add_argument('-X', required=False, default=None,dest='extvar',help='Add file extensions to wordlist contents.')
+    parser.add_argument('--not', required=False, default=None,dest='notintitle',help='Show URLS if not substring in title.')
+    parser.add_argument('-u', required=False, default=None,dest='basicauth',help='Basic authorization user:password.')
+    parser.add_argument('-E', required=False, default=None,dest='certpath',help='Path to certificate.')
 
 
     options = parser.parse_args()
@@ -79,8 +84,15 @@ def find(s, ch):
 def superProc(options,queue):
 	HEADERS= {'User-Agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36'}
 	PROXIES={}
+	reqparam={'headers':HEADERS}
+	user=password=None
 	myprint("superproc started")
 	nf_codes=[]
+	if options.certpath:
+		reqparam['veify']=options.certpath
+	if options.basicauth:
+		username,password=options.basicauth.split(':')
+		reqparam['auth']=HTTPBasicAuth(user, password)
 	if options.cookie:
 		HEADERS['Cookie']=options.cookie
 	if options.proxyaddr_port:
@@ -92,6 +104,7 @@ def superProc(options,queue):
 			for ky,vl in PROXIES.items():
 				PROXIES[ky]=PROXIES[ky].replace(f'{ky}://',f'{ky}://{user}:{password}@')
 		print(PROXIES)
+		reqparam['proxies']=PROXIES
 	if options.useragent:
 		HEADERS['User-Agent']=options.useragent
 	if options.header_string:
@@ -106,16 +119,17 @@ def superProc(options,queue):
 
 
 		while not queue.empty():
-
+			title=''
 			link=queue.get()	
-			#print(link)
+			myprint(link)
 			if link.startswith('TERMINATE'):
 				print('superproc TERMINATED')
 				return
 			try:
 				if options.delay:
 					time.sleep(int(options.delay)/1000)
-				res=requests.get(link,headers=HEADERS,proxies=PROXIES)
+				reqparam['url']=link
+				res=requests.get(**reqparam)
 				code=res.status_code
 				length=len(res.text)
 
@@ -124,7 +138,9 @@ def superProc(options,queue):
 					for ext in extfound:
 						print(link+ext)
 						try:
-							rs=requests.get(link+ext,headers=HEADERS,proxies=PROXIES)
+							reqparam['url']=link+ext
+							rs=requests.get(**reqparam)
+
 							if rs.status_code not in nf_codes:
 								print(f"+{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
 								if options.output_file:
@@ -142,6 +158,9 @@ def superProc(options,queue):
 					try:
 						res1=re.search(r'<title>([^>]+)<\/title>',res.text)
 						title=res1[1]
+						if options.notintitle and options.notintitle in title:
+							continue
+
 						title=re.sub('\s+',' ',title)
 						if res1:
 							print(f"{link=} Title:{res1[1]}")
@@ -341,22 +360,26 @@ def main(dirCounter):
 	else:
 		http_length=options.http_length
 	if options.dictionary:
+		dictionaryList=list()
 		word_dictionary=options.dictionary
-	if word_dictionary:
-		if re.match(r'^(https?|ftp)',word_dictionary):
-			res=requests.get(word_dictionary,headers=HEADERS)
-			if res.status_code==200:
-				word_list=res.text.split('\n')
-			else:
-				print('[-] The dictionary incorrect')	
-				return
+		dictionaryList=options.dictionary.split(',')
+		for word_dictionary in dictionaryList:
+			if word_dictionary:
+				if re.match(r'^(https?|ftp)',word_dictionary):
+					res=requests.get(word_dictionary,headers=HEADERS)
+					if res.status_code==200:
+						word_list_item=res.text.split('\n')
+					else:
+						print('[-] The dictionary incorrect')	
+						return
 
-		elif os.path.exists(word_dictionary):
-			word_list=open(word_dictionary,'r',encoding='utf-8').read().split('\n')	
-		else:
-			word_dictionary=None
-			print('[-] The dictionary incorrect')
-			return
+				elif os.path.exists(word_dictionary):
+					word_list_item=open(word_dictionary,'r',encoding='utf-8').read().split('\n')	
+				else:
+					word_dictionary=None
+					print('[-] The dictionary incorrect')
+					return
+			word_list.extend(word_list_item)
 		word_list=list(set(word_list))
 		word_list=[re.sub(r"\d+","",el) for el in word_list if len(el.strip())>2 ]
 		wordCounter=Counter(http_template)
