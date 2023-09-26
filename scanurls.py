@@ -197,7 +197,7 @@ def gen_words(dictionaryList):
 	word_list=word_generator(dictionaryList)
 	return wordcounter,word_list
 
-def superProc(options,queue,number,totalNumber,dirlist,lock):
+def superProc(options,queue,number,totalNumber,dirlist,superlist,lock):
 	HEADERS= {'User-Agent':'Mozilla/5.0 (X11; U; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.140 Safari/537.36'}
 	PROXIES={}
 	reqparam={'headers':HEADERS}
@@ -247,120 +247,127 @@ def superProc(options,queue,number,totalNumber,dirlist,lock):
 				print('superproc TERMINATED')
 				return
 			try:
-				if options.delay:
-					time.sleep(int(options.delay)/1000)
-				reqparam['url']=link
-				res=requests.get(**reqparam)
-				code=res.status_code
-				try:
-					contenttType=res.headers['Content-Type']
-				except KeyError:
-					contenttType='text/plain'					
-				contenttType=contenttType.split(';')[0]
-				length=len(res.text)
-				mimtype=mimetypes.guess_type(link,strict=True)
+				if not link in superlist:
+					superlist.append(link)
+					if options.delay:
+						time.sleep(int(options.delay)/1000)
+					reqparam['url']=link
+					res=requests.get(**reqparam)
+					code=res.status_code
+					try:
+						contenttType=res.headers['Content-Type']
+					except KeyError:
+						contenttType='text/plain'					
+					contenttType=contenttType.split(';')[0]
+					length=len(res.text)
+					mimtype=mimetypes.guess_type(link,strict=True)
 
-				if code==200 and options.extfound:
-					extfound=options.extfound.split(",")
-					for ext in extfound:
-						print(link+ext)
-						try:
-							reqparam['url']=link+ext
-							rs=requests.get(**reqparam)
-							mimtype=mimetypes.guess_type(link+ext,strict=True)
-							if rs.status_code not in nf_codes:
-								if rs.status_code in [403,200,301]:
-									if mimtype[0]==contenttType:
-										print(f"+{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
+					if code==200 and options.extfound:
+						extfound=options.extfound.split(",")
+						for ext in extfound:
+							print(link+ext)
+							try:
+								reqparam['url']=link+ext
+								rs=requests.get(**reqparam)
+								mimtype=mimetypes.guess_type(link+ext,strict=True)
+								if rs.status_code not in nf_codes:
+									if rs.status_code in [403,200,301]:
+										if mimtype[0]==contenttType:
+											print(f"+{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
+										else:
+											print(f"-{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
 									else:
 										print(f"-{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
-								else:
-									print(f"-{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))")
-								if options.output_file:
-									with open(options.output_file,'a',encoding='utf-8') as fl:
-										fl.write(f"+{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))\n")
-						except ConnectionError:
-							pass
+									if options.output_file:
+										with open(options.output_file,'a',encoding='utf-8') as fl:
+											fl.write(f"+{link+ext} ((CODE={rs.status_code}|LEN={len(rs.text)}))\n")
+							except ConnectionError:
+								pass
 
-				if options.NOT_FOUND and code==404:
-					print(linkres)
-					if options.output_file:
-						with open(options.output_file,'a',encoding='utf-8') as fl:
-							fl.writelines(linkres+"\n")					
-				if code not in nf_codes:
-					try:
-						res1=re.search(r'<title>([^>]+)<\/title>',res.text)
-						title=res1[1]
-						if options.notintitle and options.notintitle in title:
-							continue
-
-						title=re.sub('\s+',' ',title)
-						if res1:
-							print(f"{link=} Title:{res1[1]}")
-
-
-					except TypeError:
-						pass
-				if 200<=code<=301:
-					if contenttType=='text/html' and options.recurs:
-					
-						listdirs=dirScan(link,reqparam)
-						myprint('listdir ',listdirs)
-						for dirr in listdirs:
-							myprint(dirr)
-
-							try:
-								with lock:								
-									if  dirr not in dirlist:
-										myprint(f'newdir detected {dirr}')
-										myprint(dirlist)
-										dirlist.append(dirr)
-										myprint(dirlist)
-									else:
-										listdirs.remove(dirr)
-							except multiprocessing.managers.RemoteError:
-						 		print("RemoteError")
-						with lock:
-							if "/" in dirlist:
-								dirlist.remove('/')
-							dirlist.insert(0,'/')
-						websiteurl=re.sub(r'^(\w{3,5}:\/\/(?:[\w\d\._-]+)+)\/.+',r'\1',link)
-						myprint(f"{websiteurl=}")
-						urls=[websiteurl+dirr for dirr in listdirs]
-						loop = asyncio.get_event_loop()
-						responses = loop.run_until_complete(fetch_all_urls(urls,dirlist))
-
-
-					if mimtype[0]==contenttType or re.search(r"\/\.\w+$",link) or re.search(r'^(\w{3,5}:\/\/(?:[\w\d\._-]+)+)$',link):
-						linkres=f"+{link} (CODE={code}|LEN={length})\n"# {number.value} %{precentage}"
-					else:
-						linkres=f"-{link} (CODE={code}|LEN={length}|Type={contenttType}) {mimtype}"#\n{number.value} Links %{precentage}"
-				else:
-					linkres=f"-{link} (CODE={code}|LEN={length})"#\n{number.value} Links %{precentage}"
-				if options.location:
-				 	headers=res.headers
-				 	try:
-				 		linkres+=f"Location {headers['Location']}"
-				 	except:
-				 		pass
-
-				if nf_codes:
-					if code not in nf_codes:
+					if options.NOT_FOUND and code==404:
 						print(linkres)
 						if options.output_file:
 							with open(options.output_file,'a',encoding='utf-8') as fl:
-								fl.writelines(linkres+"\n")
-				else:
-					print(linkres)
-					if options.output_file:
-						with open(options.output_file,'a',encoding='utf-8') as fl:
-							fl.writelines(linkres+"\n")					
+								fl.writelines(linkres+"\n")					
+					if code not in nf_codes:
+						try:
+							res1=re.search(r'<title>([^>]+)<\/title>',res.text)
+							title=res1[1]
+							if options.notintitle and options.notintitle in title:
+								continue
+
+							title=re.sub('\s+',' ',title)
+							if res1:
+								print(f"{link=} Title:{res1[1]}")
+
+
+						except TypeError:
+							pass
+					if 200<=code<=301:
+						if contenttType=='text/html' and options.recurs:
+						
+							listdirs=dirScan(link,reqparam)
+							myprint('listdir ',listdirs)
+							for dirr in listdirs:
+								myprint(dirr)
+
+								try:
+									with lock:								
+										if  dirr not in dirlist:
+											myprint(f'newdir detected {dirr}')
+											myprint(dirlist)
+											dirlist.append(dirr)
+											myprint(dirlist)
+										else:
+											listdirs.remove(dirr)
+								except multiprocessing.managers.RemoteError:
+							 		print("RemoteError")
+							with lock:
+								if "/" in dirlist:
+									dirlist.remove('/')
+								dirlist.insert(0,'/')
+							websiteurl=re.sub(r'^(\w{3,5}:\/\/(?:[\w\d\._-]+)+)\/.+',r'\1',link)
+							myprint(f"{websiteurl=}")
+							urls=[websiteurl+dirr for dirr in listdirs]
+							loop = asyncio.get_event_loop()
+							responses = loop.run_until_complete(fetch_all_urls(urls,dirlist))
+
+
+						if mimtype[0]==contenttType or re.search(r"\/\.\w+$",link) or re.search(r'^(\w{3,5}:\/\/(?:[\w\d\._-]+)+)$',link):
+							linkres=f"+{link} (CODE={code}|LEN={length})\n"# {number.value} %{precentage}"
+						else:
+							linkres=f"-{link} (CODE={code}|LEN={length}|Type={contenttType}) {mimtype}"#\n{number.value} Links %{precentage}"
+					else:
+						linkres=f"-{link} (CODE={code}|LEN={length})"#\n{number.value} Links %{precentage}"
+					if options.location:
+					 	headers=res.headers
+					 	try:
+					 		linkres+=f"Location {headers['Location']}"
+					 	except:
+					 		pass
+
+					if nf_codes:
+						if code not in nf_codes:
+							print(linkres)
+							if options.output_file:
+								with open(options.output_file,'a',encoding='utf-8') as fl:
+									fl.writelines(linkres+"\n")
+					else:
+						print(linkres)
+						if options.output_file:
+							with open(options.output_file,'a',encoding='utf-8') as fl:
+								fl.writelines(linkres+"\n")					
 
 
 			except ConnectionError:
+				if link in superlist:
+					superlist.remove(link)				
 				if options.NOT_FOUND_PAGES:
 					print(f"NOT_FOUND_PAGE: {link}")
 				myprint("[-]Connection problems")
+			except:
+				if link in superlist:
+					superlist.remove(link)							
 			finally:
 				precentage=1
 				if totalNumber.value>0:
@@ -589,6 +596,7 @@ def main(dirCounter):
 	extvars=list()
 	manager=Manager()
 	number=manager.Value('i',0)	
+	superlist=manager.list()
 	dirlist=manager.list()
 	totalnumber=manager.Value('i',1)	
 	lock=manager.Lock()
@@ -602,7 +610,7 @@ def main(dirCounter):
 	dt=datetime.now()
 	print(dt.strftime('START_TIME: %a %b %d %H:%M:%S %Y'))
 	for num in range(0,PROC_NUM):
-		prc=Process(target=superProc,args=(options,queue,number,totalnumber,dirlist,lock,))
+		prc=Process(target=superProc,args=(options,queue,number,totalnumber,dirlist,superlist,lock,))
 		prc.start()
 		procs.append(prc)	
 	if not options.http_length:
@@ -927,3 +935,5 @@ if __name__ == '__main__':
 		elif ans=='n':
 			dirCounter.value+=1
 			print(f"[!] Go to next directory")
+
+
